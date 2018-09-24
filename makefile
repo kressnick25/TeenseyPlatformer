@@ -9,7 +9,7 @@ TARGETS = main.hex
 
 # Set the name of the folder containing libcab202_teensy.a
 
-CAB202_TEENSY_FOLDER = ../cab202_teensy 
+CAB202_TEENSY_FOLDER = ./cab202_teensy 
 
 # ---------------------------------------------------------------------------
 #	Leave the rest of the file alone.
