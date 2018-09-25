@@ -25,7 +25,7 @@ void setup_game(){
     draw_platforms();
     sprite_init( &player, 0, 0, 5, 4, player_image);
     sprite_draw( &player);
-    sprite_init( &treasure, 0, LCD_Y - 5, 5, 3, chest_image);
+    sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, chest_image);
     treasure.dx = 0.1 * GS;
     sprite_draw( &treasure);
 }
@@ -58,7 +58,7 @@ int main ( void ){
                 clear_screen();
                 sprite_step(&treasure);
                 auto_move_platforms();
-                //move_treasure();
+                move_treasure();
                 draw_all();
                 show_screen();
         }

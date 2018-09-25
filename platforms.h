@@ -6,14 +6,14 @@
 
 Sprite Platforms[sizeOfPlatforms];
 // gs multiplier, alter to change gamespeed.
-float GS = 0.5;
+float GS = 1;
 
 void create_platforms( void ) {
     //memset(Platforms, 0, sizeof Platforms);
     int initX = 0, initY = 9;
     int deltaY = 0;
     int c = 0;
-    int speed = 1 * GS;
+    float speed = 0.1 * GS;
     for (int i = 0; i < 4; i++)
     {
         int deltaX = 0;
