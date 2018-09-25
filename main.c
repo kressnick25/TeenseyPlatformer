@@ -1,5 +1,8 @@
 #include "includes.h"
-#include "sprite_models.h"
+
+
+Sprite player;
+
 
 void init_buttons(){
     CLEAR_BIT( DDRF, 6 );
@@ -15,11 +18,22 @@ void setup_start(){
     show_screen();
 }
 
-sprite_id player;
+
 
 void setup_game(){
-    sprite_init( player, 0, 0, 7, 7, player_image);
+    create_platforms();
+    draw_platforms();
+    sprite_init( &player, 0, 0, 5, 4, player_image);
     sprite_draw( &player);
+    sprite_init( &treasure, 0, LCD_Y - 5, 5, 3, chest_image);
+    treasure.dx = 0.1 * GS;
+    sprite_draw( &treasure);
+}
+
+void draw_all(){
+    sprite_draw(&player);
+    sprite_draw(&treasure);
+    draw_platforms();
 }
 
 int main ( void ){
@@ -41,6 +55,11 @@ int main ( void ){
     while(!game_exit){
         bool game_exit = false;
         while(!game_exit){
+                clear_screen();
+                sprite_step(&treasure);
+                auto_move_platforms();
+                //move_treasure();
+                draw_all();
                 show_screen();
         }
     }

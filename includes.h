@@ -13,5 +13,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <lcd_model.h>
+#include <string.h>
+
+#include "sprite_control.h"
+#include "sprite_models.h"
+#include "platforms.h"
+#include "chest.h"
+
+// note: if 'implicit delcaration error' have to change order included.
 
 #endif
