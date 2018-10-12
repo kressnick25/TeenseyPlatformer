@@ -10,7 +10,11 @@ bool gamePause = false;
 bool gravity;
 bool playerCollision = true;
 bool treasureMove = true;
+//TODO put these in struct
 float pot1Value; 
+uint8_t score;
+unint8_t livesRemaining;
+uint16_t startTime; 
 
 
 void move_player(){
@@ -100,6 +104,12 @@ void draw_all(){
     sprite_draw(&player);
     sprite_draw(&treasure);
     draw_platforms();
+}
+
+void gamePauseScreen()
+{
+    clear_screen();
+
 }
 
 int main ( void ){
