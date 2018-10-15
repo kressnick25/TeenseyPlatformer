@@ -52,25 +52,51 @@ uint16_t adc_read(uint8_t channel) {
 	return ADC;
 }
 
+// Returns a random double floating point number between two values
+double rand_number(double min, double max)
+{ 
+    double range = (max - min);
+    double div = RAND_MAX / range;
+    return min + (rand() / div);
+}
+
+uint8_t* choose_platform_type ( void )
+{
+    int i = rand_number(0,8);
+    uint8_t* type;
+    if (i <= 2){
+        type = block_image;
+    }
+    else if (i == 3){
+        type = bad_image;
+    }
+    else{
+        type = NULL;
+    }
+    return type;
+}
+
 void create_platforms( void ) {
     //memset(Platforms, 0, sizeof Platforms);
-    int initX = 0, initY = 9;
+    int initX = 0, initY = 7;
     int deltaY = 0;
     int c = 0;
     platformMultiplyer = adc_read(1) / 80;
     if (platformMultiplyer > MAX_PS) platformMultiplyer = MAX_PS;
     //if (platformMultiplyer < 0.1) platformMultiplyer = 0;
     float speed = 0.05 * platformMultiplyer;
+    
     for (int i = 0; i < 4; i++)
     {
         int deltaX = 0;
         speed = -speed; // alternate direction
         for (int j = 0; j < 7; j++)
         {
-            if (true) // bitmap != Null
+            uint8_t* bitmap = choose_platform_type();
+            if (bitmap != NULL) // bitmap != Null
             {
                 sprite_init(&Platforms[c], initX + deltaX, initY + deltaY, 
-                                                10, 2, block_image);
+                                                10, 2, bitmap);
                 Platforms[c].dx = speed;
                 deltaX += 12;
             }
@@ -80,9 +106,9 @@ void create_platforms( void ) {
             }
             c++; 
         }
-        deltaY += 10;
+        deltaY += 11;
     }
-}
+} 
 
 void draw_platforms( void )
 {
@@ -102,13 +128,13 @@ void auto_move_platforms( void )
                 Platforms[i].x = LCD_X - 1;
             }
             else if(Platforms[i].x > LCD_X - 1){ // Screen RHS
-                Platforms[i].x = 0 - 10;
+                Platforms[i].x = 0 - 8;
             }
         //}
     }
 }
 
-void change_platform_speed( float speed )
+void change_platform_speed( float speed ) //TODO fix platforms reversing
 {
     int c = 0;
     for (int i = 0; i < 4; i++){

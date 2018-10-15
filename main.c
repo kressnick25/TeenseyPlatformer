@@ -1,7 +1,7 @@
 #include "includes.h"
 
 
-Sprite player;
+
 
 // Game states
 // TODO move these to single byte.
@@ -12,9 +12,9 @@ bool playerCollision = true;
 bool treasureMove = true;
 //TODO put these in struct
 float pot1Value; 
-uint8_t score;
-unint8_t livesRemaining;
-uint16_t startTime; 
+uint8_t Score = 0;
+uint8_t LivesRemaining = 10;
+uint16_t startTime = 1000; 
 
 
 void move_player(){
@@ -57,6 +57,9 @@ void move_player(){
         // TODO debounce this
         treasureMove = !treasureMove;
     }
+    else if (BIT_VALUE(PINB, 0)){ // TODO move to seperate function
+        gamePause = true; //TODO debounce this
+    }
     else 
     {
         if (player.dx > 0.0){
@@ -80,6 +83,7 @@ void init_buttons(){
 }
 
 void setup_start(){
+    srand(100); //TODO proper timer seed.
     set_clock_speed(CPU_8MHz);
     lcd_init(LCD_DEFAULT_CONTRAST);
     init_buttons();
@@ -106,10 +110,27 @@ void draw_all(){
     draw_platforms();
 }
 
-void gamePauseScreen()
+void game_pause_screen()
 {
     clear_screen();
+    uint16_t secondsPast = startTime; // TODO minus current time
+    uint8_t minutes = (secondsPast /60) % 60;
+    uint8_t seconds = secondsPast % 60;
+    char lives[15];
+    char score[11];
+    char counter[10]; 
 
+    sprintf(lives, "%d lives left", LivesRemaining);
+    sprintf(score, "Score: %d", Score);
+    sprintf(counter, "%02u:%02u", minutes, seconds);
+    
+    draw_string(10,16, lives, FG_COLOUR);
+    draw_string(20,24, score, FG_COLOUR);
+    draw_string(28,32, counter, FG_COLOUR);
+    show_screen();
+    if (BIT_VALUE(PINB, 0)){ //TODO debounce this
+        gamePause = false;
+    }
 }
 
 int main ( void ){
@@ -135,6 +156,7 @@ int main ( void ){
             {
                 clear_screen();
                 check_pot();
+                platforms_collide();
                 move_player();
                 if (treasureMove) sprite_step(&treasure);
                 sprite_step(&player);
@@ -143,12 +165,10 @@ int main ( void ){
                 draw_all();
                 show_screen();
             }
-            //gamePauseScreen();    
+            game_pause_screen();  
         }
         // gameOverScreen();
     }
-
-
     return 0;
 }
 
