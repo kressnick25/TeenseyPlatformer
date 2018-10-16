@@ -47,22 +47,55 @@ Sprite treasure;
 Sprite player;
 Sprite Platforms[sizeOfPlatforms];
 
-//debounce
-volatile uint8_t state_count = 0b00000000;
-volatile uint8_t pressed;
+//debounce //TODO put in array
+volatile uint8_t pause_counter = 0b00000000;
+volatile uint8_t leftB_counter = 0b00000000;
+volatile uint8_t rightB_counter = 0b00000000;
+volatile uint8_t upB_counter = 0b00000000;
+volatile uint8_t downB_counter = 0b00000000;
+volatile uint8_t switchL_counter = 0b00000000;
+volatile uint8_t switchR_counter = 0b00000000;
+// store as single uint8_t
+volatile uint8_t pause_pressed;
+volatile uint8_t leftB_pressed;
+volatile uint8_t rightB_pressed;
+volatile uint8_t upB_pressed;
+volatile uint8_t downB_pressed;
+volatile uint8_t switchL_pressed;
+volatile uint8_t switchR_pressed;
+
 
 ISR(TIMER0_OVF_vect){
     uint8_t mask = 0b00011111;
 
-    state_count = ((state_count << 1) & mask) | BIT_IS_SET(PINB, 0);
-    
-
-    if (state_count == mask){
-        pressed = 1;
-    } 
-    else if (state_count == 0){
-        pressed = 0;
-    }
+    //pause button
+    pause_counter = ((pause_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
+    if (pause_counter == mask){ pause_pressed = 1; } 
+    else if (pause_counter == 0){ pause_pressed = 0; }
+    //left joystick
+    leftB_counter = ((leftB_counter << 1) & mask) | BIT_IS_SET(PINB, 1);
+    if (leftB_counter == mask){ leftB_pressed = 1; } 
+    else if (leftB_counter == 0){ leftB_pressed = 0; }
+    //right joystick
+    rightB_counter = ((rightB_counter << 1) & mask) | BIT_IS_SET(PIND, 0);
+    if (rightB_counter == mask){ rightB_pressed = 1; } 
+    else if (rightB_counter == 0){ rightB_pressed = 0; }
+    //up joystick
+    upB_counter = ((upB_counter << 1) & mask) | BIT_IS_SET(PIND, 1);
+    if (upB_counter == mask){ upB_pressed = 1; } 
+    else if (upB_counter == 0){ upB_pressed = 0; }
+    //down joystick
+    downB_counter = ((downB_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
+    if (downB_counter == mask) { downB_pressed = 1; } 
+    else if (downB_counter == 0){ downB_pressed = 0; }
+    //left switch
+    switchL_counter = ((switchL_counter << 1) & mask) | BIT_IS_SET(PINF, 6);
+    if (switchL_counter == mask){ switchL_pressed = 1; } 
+    else if (switchL_counter == 0){ switchL_pressed = 0; }
+    //right switch
+    switchR_counter = ((switchR_counter << 1) & mask) | BIT_IS_SET(PINF, 5);
+    if (switchR_counter == mask){ switchR_pressed = 1; } 
+    else if (switchR_counter == 0){ switchR_pressed = 0; }
 
 }
 
@@ -420,7 +453,7 @@ void check_out_of_bounds( void )
 void move_treasure()
 {
     // Uses code from ZDJ Topic 04
-    // Toggle chest movement when 't' pressed.
+    // Toggle chest movement when 't' pause_pressed.
     int cx = round(treasure.x);
     double cdx = treasure.dx;
     if ( cx == 0 || cx == LCD_X - treasure.width){
@@ -498,8 +531,8 @@ void move_player(){
         gamePause = true; //TODO debounce this
     }**/
     
-    else if ( pressed != prevState ) {
-		prevState = pressed;
+    else if ( pause_pressed != prevState ) {
+		prevState = pause_pressed;
 		gamePause = !gamePause;
 	}
     else 
