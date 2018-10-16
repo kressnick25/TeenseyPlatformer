@@ -13,9 +13,11 @@
 #include <string.h>
 #include <stdio.h>
 
+//TODO remove unused libraries
+//TODO convert int to uint8_t where appropriate.
 
 // gs multiplier, alter to change gamespeed.
-#define GS 1;
+#define GS 1.1;
 #define MAX_PS 10
 #define sizeOfPlatforms 28
 
@@ -23,12 +25,14 @@
 // TODO move these to single byte.
 bool gameOver = false;
 bool gamePause = false;
-bool gravity;
+bool gameExit = false;
+//bool gravity;
 bool playerCollision = true;
 bool treasureMove = true;
 //TODO put these in struct
 float pot1Value; 
 float platformMultiplyer = 1;
+uint8_t old_block;
 uint8_t Score = 0;
 uint8_t LivesRemaining = 10;
 uint16_t startTime = 1000; 
@@ -205,7 +209,7 @@ void change_platform_speed( float speed ) //TODO fix platforms reversing
     int c = 0;
     for (int i = 0; i < 4; i++){
         for (int j = 0; j < 7; j++){
-            Platforms[c].dx = 0.05 * speed;
+            Platforms[c].dx = 0.05 * speed * GS;
             c++;
         }
         speed = -speed;
@@ -222,11 +226,46 @@ void check_pot(){
     platformMultiplyer = current_pot;
 }
 
+void gravity( void )
+{
+    // When on block, kill velocity
+    if (playerCollision)
+    {
+       player.dy = 0;
+   }
+    // When jumping, half velocity each step
+    else if(player.dy <= -0.01)
+    {
+        player.dy *= 0.3;
+    }
+    // When falling (negative velocity) double velocity
+    else if (player.dy > 0 && player.dy < 0.8)
+    {
+        player.dy *= 1.5;
+    }
+    // When jump peak reached, flip velocity to negative
+    else if(player.dy > -0.2 && player.dy < 0)
+    {
+         player.dy = -player.dy;
+    }
+    // Else give player falling velocity
+    else if(!playerCollision)// && player.dy == 0.0)
+    {
+        player.dy = 0.1;
+    }
+    /**
+    // Apply accumulated 'momentum' to player speed when off block.
+    if(!playerCollision){
+        player->dx = momentum;
+    }**/
+}
+
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
 void die ( void )
 {   
     //timer_pause(1000); //TODO
+    _delay_ms(1000);
     player.is_visible = 0;
     //create_platforms(); //TODO
     //reset player variables
@@ -238,18 +277,28 @@ void die ( void )
     player.x = 0;
     player.y = 0;
     player.is_visible = 1;
-    /**livesRemaining--; //TODO
-    if (livesRemaining == 0)
+    LivesRemaining--;
+    if (LivesRemaining == 0)
     {
-        //gameOver = true;
-    }**/
+        gamePause = true;
+    }
+}
+
+// Increases score only when player moves to or lands on a new safe block
+void increase_score(int new_block)
+{
+    if(old_block != new_block)
+    {
+        Score++;
+    }
+    old_block = new_block;
 }
 
 // Checks collision between two sprites on a pixel level
 bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 {       // Uses code from AMS wk5.
         // Only check bottom of player model, stops player getting stuck in blocks.
-    int y = round(s1->y + 2);
+    int y = round(s1->y + 3);
     for (int x = s1->x; x < s1->x + s1->width; x++){
         // Get relevant values of from each sprite
         int sx1 = x - round(s1->x);
@@ -263,11 +312,11 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
         // If opaque at both points, collisio has occured
         if (0 <= sx1 && sx1 < s1->width &&
             0 <= sy2 && sy1 < s1->height &&
-            s1->bitmap[offset1] != ' ')
+            s1->bitmap[offset1] != '0')
             {
             if (0 <= sx2 && sx2 < s2->width &&
                 0 <= sy2 && sy2 < s2->height && 
-                s2->bitmap[offset2] != ' ')
+                s2->bitmap[offset2] != '0')
                 {
                 return true;
             }
@@ -309,8 +358,9 @@ bool platforms_collide( void )
         //} 
     }
     if (output == true){
-        //increase_score(c); //TODO
+        increase_score(c);
     }
+    playerCollision = output;
     return output;
 }
 
@@ -330,16 +380,6 @@ void move_treasure()
 {
     // Uses code from ZDJ Topic 04
     // Toggle chest movement when 't' pressed.
-    /**if (key == 't')
-    {
-        stop_chest = !stop_chest;
-    }
-    if (!stop_chest)
-    {
-        sprite_step(chest);
-        animate_chest();
-    }**/
-    // Change direction when wall hit
     int cx = round(treasure.x);
     double cdx = treasure.dx;
     if ( cx == 0 || cx == LCD_X - treasure.width){
@@ -351,24 +391,43 @@ void move_treasure()
     }
 }
 
+// Checks for player collision with chest, hides chest upon collision
+void chest_collide( void )
+{ 
+    // only do if player close proximity to chest, saves cpu time when not needed.
+    if (player.y > LCD_X / 2){ //TODO narrow this down.
+        bool collide = pixel_level_collision(&player, &treasure);
+        if (collide)
+        {
+            LivesRemaining += 3;
+            //hide_chest_timer = create_timer(2000);
+            //sprite_hide(chest);
+            //TODO destory treasure sprite
+            //move treasure off screen, cant collide
+
+            die();
+        }
+    }
+}
+
 void move_player(){
     if ( BIT_VALUE(PIND, 0) && player.x < LCD_X - 5 && playerCollision)
     {
-        if (player.dx < 0.5)
+        if (player.dx < 0.7)
         {
-            player.dx += 0.1;
+            player.dx += 0.5;
         }        
     }
     else if (BIT_VALUE(PINB, 1) && player.x > 0 && playerCollision)
     {
-        if (player.dx > -0.5)
+        if (player.dx > -0.7)
         {
-            player.dx -= 0.1;
+            player.dx -= 0.5;
         }
     }
     else if (BIT_VALUE(PIND, 1) && playerCollision)
     {
-        player.y -= 1;
+        player.y -= 3;
         // Jumping with horizontal velocity moves further than
         // falling with horizontal velocity
         if (player.dy != 0)
@@ -414,12 +473,17 @@ void init_buttons(){
     CLEAR_BIT( DDRD, 0 ); // joystick right
     CLEAR_BIT( DDRB, 0 ); // joystick centre click
     // TODO LED's
+    
+    // Backlight
+    SET_BIT(DDRC, 7);
+    SET_BIT(PORTC, 7);
+
 }
 
 void setup_start(){
     srand(100); //TODO proper timer seed.
     set_clock_speed(CPU_8MHz);
-    lcd_init(LCD_DEFAULT_CONTRAST);
+    lcd_init(0x44);
     init_buttons();
     adc_init(); //init pot1
     // TODO change this to ascii per asci_font.h
@@ -446,6 +510,9 @@ void draw_all(){
 
 void game_pause_screen()
 {
+    if (LivesRemaining == 0){
+        gameOver = true;
+    }
     clear_screen();
     uint16_t secondsPast = startTime; // TODO minus current time
     uint8_t minutes = (secondsPast /60) % 60;
@@ -481,16 +548,16 @@ int main ( void ){
 
     setup_game();
 
-    bool game_exit = false;
-    while(!game_exit)
+    while(!gameExit)
     {
         while(!gameOver)
         {   
             while(!gamePause)
             {
                 clear_screen();
-                check_pot();
                 platforms_collide();
+                check_pot();
+                gravity();
                 move_player();
                 if (treasureMove) sprite_step(&treasure);
                 sprite_step(&player);
@@ -498,10 +565,13 @@ int main ( void ){
                 move_treasure();
                 draw_all();
                 show_screen();
+                _delay_ms(10);
             }
             game_pause_screen();  
         }
         // gameOverScreen();
+        clear_screen();
+        show_screen();
     }
     return 0;
 }

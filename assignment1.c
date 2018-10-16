@@ -531,12 +531,11 @@ void chest_collide( void )
     {
         livesRemaining += 3;
         hide_chest_timer = create_timer(2000);
-        sprite_hide(chest);
+        //sprite_hide(chest);
+        // move chest off screen, can't collide with player
+        // todo destroy sprite
+
         die();
-    }
-    if (hide_chest_timer != NULL && timer_expired(chest_timer))
-    {
-            sprite_show(chest);
     }
 }
 
