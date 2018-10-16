@@ -12,6 +12,7 @@
 #include <lcd_model.h>
 #include <string.h>
 #include <stdio.h>
+#include <avr/interrupt.h>
 
 //TODO remove unused libraries
 //TODO convert int to uint8_t where appropriate.
@@ -20,6 +21,11 @@
 #define GS 1.1;
 #define MAX_PSPEED 10
 #define sizeOfPlatforms 28
+
+//PWM
+#define BIT(x) (1 << (x))
+#define OVERFLOW_TOP (1023)
+#define ADC_MAX (1023)
 
 // Game states
 // TODO move these to single byte.
@@ -41,15 +47,24 @@ Sprite treasure;
 Sprite player;
 Sprite Platforms[sizeOfPlatforms];
 
-/**uint8_t player_image[7] = {
-    0b11101110,
-    0b10111010,
-    0b11010110,
-    0b01111100,
-    0b11010110,
-    0b10111010,
-    0b11101110
-};**/
+//debounce
+volatile uint8_t state_count = 0b00000000;
+volatile uint8_t pressed;
+
+ISR(TIMER0_OVF_vect){
+    uint8_t mask = 0b00011111;
+
+    state_count = ((state_count << 1) & mask) | BIT_IS_SET(PINB, 0);
+    
+
+    if (state_count == mask){
+        pressed = 1;
+    } 
+    else if (state_count == 0){
+        pressed = 0;
+    }
+
+}
 
 uint8_t player_image[4] = {
     0b00100000,
@@ -237,9 +252,9 @@ void gravity( void )
         player.dy *= 0.3;
     }
     // When falling (negative velocity) double velocity
-    else if (player.dy > 0 && player.dy < 0.8)
+    else if (player.dy > 0 && player.dy < 2.0)
     {
-        player.dy *= 1.5;
+        player.dy += 1;
     }
     // When jump peak reached, flip velocity to negative
     else if(player.dy > -0.2 && player.dy < 0)
@@ -257,6 +272,27 @@ void gravity( void )
         player->dx = momentum;
     }**/
 }
+
+void backlight_pwm(int duty_cycle){
+    // Set the TOP value for the timer overflow comparator to 1023, 
+	//		yielding a cycle of 1024 ticks per overflow.
+	TC4H = OVERFLOW_TOP >> 8;
+	OCR4C = OVERFLOW_TOP & 0xff;
+	// Use OC4A for PWM. Remember to set DDR for C7.
+	TCCR4A = BIT(COM4A1) | BIT(PWM4A);
+	SET_BIT(DDRC, 7);
+	// Set pre-scale to "no pre-scale" 
+	TCCR4B = BIT(CS42) | BIT(CS41) | BIT(CS40);
+    // Select Fast PWM
+	TCCR4D = 0;
+    //SET DUTY CYCLE
+    // Set bits 8 and 9 of Output Compare Register 4A.
+	TC4H = duty_cycle >> 8;
+
+	// Set bits 0..7 of Output Compare Register 4A.
+	OCR4A = duty_cycle & 0xff;
+}
+
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
@@ -296,21 +332,21 @@ void increase_score(int new_block)
 bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 {       // Uses code from AMS wk5.
         // Only check bottom of player model, stops player getting stuck in blocks.
-    int y = round(s1->y + 4);
+    uint8_t y = round(s1->y + 4);
     //int xcor[5] = {0, 4, 1, 2, 3};
     //int ycor[5] = {1, 1, 4, 4, 4};
-    //for (int y = s1->y; y < s1->y + s1->height; y++){
-        for (int x = s1->x; x < s1->x + s1->width; x++){
+    //for (uint8_t y = s1->y; y < s1->y + s1->height; y++){
+        for (uint8_t x = s1->x; x < s1->x + s1->width; x++){
     //for (int y = 0; y < 5; y++){
         //for (int x = 0; x < 5; x++){        
             // Get relevant values of from each sprite
-            int sx1 = x - round(s1->x);
-            int sy1 = y - ceil(s1->y);
-            int offset1 = sy1 * s1->width + sx1;
+            uint8_t sx1 = x - round(s1->x);
+            uint8_t sy1 = y - ceil(s1->y);
+            uint8_t offset1 = sy1 * s1->width + sx1;
 
-            int sx2 = x - round(s2->x);
-            int sy2 = y - round(s2->y);
-            int offset2 = sy2 * s2->width + sx2;
+            uint8_t sx2 = x - round(s2->x);
+            uint8_t sy2 = y - round(s2->y);
+            uint8_t offset2 = sy2 * s2->width + sx2;
             
             // If opaque at both points, collisio has occured
             if (0 <= sx1 && sx1 < s1->width &&
@@ -325,7 +361,7 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
                 }
             }
         }
-    
+    //}
     return false;
 }
 
@@ -334,6 +370,7 @@ bool platforms_collide( void )
 {
     bool output = false;
     uint8_t c = 0;
+    // TODO check closest platform to player only.
     for (int i = 0; i < sizeOfPlatforms; i++){
         //if(Platforms[i] != NULL)    // Do not check empty platforms //TODO
         //{ 
@@ -399,7 +436,7 @@ void move_treasure()
 void chest_collide( void )
 { 
     // only do if player close proximity to chest, saves cpu time when not needed.
-    if (player.y > LCD_X - 10){ //TODO narrow this down.
+    if (player.y > LCD_X - 20){ //TODO narrow this down.
         bool collide = pixel_level_collision(&player, &treasure);
         if (collide)
         {
@@ -415,6 +452,8 @@ void chest_collide( void )
 }
 
 void move_player(){
+    static uint8_t prevState = 0;
+
     if ( BIT_VALUE(PIND, 0) && player.x < LCD_X - 5 && playerCollision)
     {
         if (player.dx < 0.7)
@@ -454,9 +493,15 @@ void move_player(){
         // TODO debounce this
         treasureMove = !treasureMove;
     }
+    /**
     else if (BIT_VALUE(PINB, 0)){ // TODO move to seperate function
         gamePause = true; //TODO debounce this
-    }
+    }**/
+    
+    else if ( pressed != prevState ) {
+		prevState = pressed;
+		gamePause = !gamePause;
+	}
     else 
     {
         if (player.dx > 0.0){
@@ -494,6 +539,11 @@ void setup_start(){
     draw_string(8, 16, "Nicholas Kress", FG_COLOUR);
     draw_string(22, 24, "n9467688", FG_COLOUR);
     show_screen();
+    // setup debounce timers
+    TCCR0A = 0;
+    TCCR0B = 4;
+    TIMSK0 = 1; //Enable timer overflow interrupt for Timer 0.
+    sei(); //Turn on interrupts.
 }
 
 void setup_game(){
@@ -535,9 +585,10 @@ void game_pause_screen()
     draw_string(20,24, score, FG_COLOUR);
     draw_string(28,32, counter, FG_COLOUR);
     show_screen();
+    /**
     if (BIT_VALUE(PINB, 0)){ //TODO debounce this
         gamePause = false;
-    }
+    }**/
 }
 
 int main ( void ){
@@ -561,8 +612,11 @@ int main ( void ){
             while(!gamePause)
             {
                 clear_screen();
+                long left_adc = adc_read(0);
+                backlight_pwm(ADC_MAX - left_adc);
                 check_out_of_bounds();
                 platforms_collide();
+                chest_collide(); //TODO not working
                 check_pot();
                 gravity();
                 move_player();
@@ -574,7 +628,8 @@ int main ( void ){
                 show_screen();
                 _delay_ms(0);
             }
-            game_pause_screen();  
+            game_pause_screen();
+            move_player();  
         }
         // gameOverScreen();
         clear_screen();
