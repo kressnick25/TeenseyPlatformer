@@ -18,7 +18,7 @@
 
 // gs multiplier, alter to change gamespeed.
 #define GS 1.1;
-#define MAX_PS 10
+#define MAX_PSPEED 10
 #define sizeOfPlatforms 28
 
 // Game states
@@ -55,7 +55,7 @@ uint8_t player_image[4] = {
     0b00100000,
     0b11111000,
     0b01010000,
-    0b11111000
+    0b01110000
 };
 
 uint8_t chest_image[3] = {
@@ -147,13 +147,13 @@ uint8_t* choose_platform_type ( void )
 }
 
 void create_platforms( void ) {
-    //memset(Platforms, 0, sizeof Platforms);
+    //TODO enable this on death to change platforms
+    //memset(Platforms, 0, sizeof Platforms); 
     int initX = 0, initY = 7;
     int deltaY = 0;
     int c = 0;
     platformMultiplyer = adc_read(1) / 80;
-    if (platformMultiplyer > MAX_PS) platformMultiplyer = MAX_PS;
-    //if (platformMultiplyer < 0.1) platformMultiplyer = 0;
+    if (platformMultiplyer > MAX_PSPEED) platformMultiplyer = MAX_PSPEED;
     float speed = 0.05 * platformMultiplyer;
     
     for (int i = 0; i < 4; i++)
@@ -176,16 +176,14 @@ void create_platforms( void ) {
             }
             c++; 
         }
-        deltaY += 11;
+        deltaY += 10;
     }
 } 
 
 void draw_platforms( void )
 {
     for (int j = 0; j < sizeOfPlatforms; j++){
-        //if (Platforms[j] != NULL){ 
             sprite_draw(&Platforms[j]);
-        //}
     }
 }
 
@@ -220,7 +218,7 @@ void check_pot(){
     float current_pot = adc_read(1) / 80;
 
     if (platformMultiplyer != current_pot){
-        if (current_pot > MAX_PS) current_pot = MAX_PS;
+        if (current_pot > MAX_PSPEED) current_pot = MAX_PSPEED;
         change_platform_speed(current_pot);
     }
     platformMultiplyer = current_pot;
@@ -274,7 +272,7 @@ void die ( void )
     //choose safe platform to move to
     //sprite_id safe_block = choose_safe_block();
     //sprite_move_to(player, safe_block->x, safe_block->y - 3);
-    player.x = 0;
+    player.x = 20;
     player.y = 0;
     player.is_visible = 1;
     LivesRemaining--;
@@ -298,30 +296,36 @@ void increase_score(int new_block)
 bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 {       // Uses code from AMS wk5.
         // Only check bottom of player model, stops player getting stuck in blocks.
-    int y = round(s1->y + 3);
-    for (int x = s1->x; x < s1->x + s1->width; x++){
-        // Get relevant values of from each sprite
-        int sx1 = x - round(s1->x);
-        int sy1 = y - ceil(s1->y);
-        int offset1 = sy1 * s1->width + sx1;
+    int y = round(s1->y + 4);
+    //int xcor[5] = {0, 4, 1, 2, 3};
+    //int ycor[5] = {1, 1, 4, 4, 4};
+    //for (int y = s1->y; y < s1->y + s1->height; y++){
+        for (int x = s1->x; x < s1->x + s1->width; x++){
+    //for (int y = 0; y < 5; y++){
+        //for (int x = 0; x < 5; x++){        
+            // Get relevant values of from each sprite
+            int sx1 = x - round(s1->x);
+            int sy1 = y - ceil(s1->y);
+            int offset1 = sy1 * s1->width + sx1;
 
-        int sx2 = x - round(s2->x);
-        int sy2 = y - round(s2->y-1);
-        int offset2 = sy2 * s2->width + sx2;
-        
-        // If opaque at both points, collisio has occured
-        if (0 <= sx1 && sx1 < s1->width &&
-            0 <= sy2 && sy1 < s1->height &&
-            s1->bitmap[offset1] != '0')
-            {
-            if (0 <= sx2 && sx2 < s2->width &&
-                0 <= sy2 && sy2 < s2->height && 
-                s2->bitmap[offset2] != '0')
+            int sx2 = x - round(s2->x);
+            int sy2 = y - round(s2->y);
+            int offset2 = sy2 * s2->width + sx2;
+            
+            // If opaque at both points, collisio has occured
+            if (0 <= sx1 && sx1 < s1->width &&
+                0 <= sy2 && sy1 < s1->height &&
+                s1->bitmap[offset1] != '0')
                 {
-                return true;
+                if (0 <= sx2 && sx2 < s2->width &&
+                    0 <= sy2 && sy2 < s2->height && 
+                    s2->bitmap[offset2] != '0')
+                    {
+                    return true;
+                }
             }
         }
-    }
+    
     return false;
 }
 
@@ -371,7 +375,7 @@ void check_out_of_bounds( void )
         player.x + player.width < 0 || 
         player.x > LCD_X)
         {
-        //die();
+        die();
     }     
 }
 
@@ -395,7 +399,7 @@ void move_treasure()
 void chest_collide( void )
 { 
     // only do if player close proximity to chest, saves cpu time when not needed.
-    if (player.y > LCD_X / 2){ //TODO narrow this down.
+    if (player.y > LCD_X - 10){ //TODO narrow this down.
         bool collide = pixel_level_collision(&player, &treasure);
         if (collide)
         {
@@ -495,7 +499,7 @@ void setup_start(){
 void setup_game(){
     create_platforms();
     draw_platforms();
-    sprite_init( &player, 0, 0, 5, 4, player_image);
+    sprite_init( &player, 20, 0, 5, 4, player_image);
     sprite_draw( &player);
     sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, chest_image);
     treasure.dx = 0.1 * GS;
@@ -506,6 +510,8 @@ void draw_all(){
     sprite_draw(&player);
     sprite_draw(&treasure);
     draw_platforms();
+    draw_line( 0, 0, 0, LCD_Y, FG_COLOUR);
+    draw_line( LCD_X-1, 0, LCD_X-1, LCD_Y, FG_COLOUR );
 }
 
 void game_pause_screen()
@@ -555,6 +561,7 @@ int main ( void ){
             while(!gamePause)
             {
                 clear_screen();
+                check_out_of_bounds();
                 platforms_collide();
                 check_pot();
                 gravity();
@@ -565,7 +572,7 @@ int main ( void ){
                 move_treasure();
                 draw_all();
                 show_screen();
-                _delay_ms(10);
+                _delay_ms(0);
             }
             game_pause_screen();  
         }
