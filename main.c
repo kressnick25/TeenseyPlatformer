@@ -64,6 +64,7 @@ volatile uint8_t downB_pressed;
 volatile uint8_t switchL_pressed;
 volatile uint8_t switchR_pressed;
 
+static uint8_t prevState = 0;
 
 ISR(TIMER0_OVF_vect){
     uint8_t mask = 0b00011111;
@@ -207,7 +208,6 @@ void create_platforms( void ) {
     for (int i = 0; i < 4; i++)
     {
         int deltaX = 0;
-        speed = -speed; // alternate direction
         for (int j = 0; j < 7; j++)
         {
             uint8_t* bitmap = choose_platform_type();
@@ -224,6 +224,7 @@ void create_platforms( void ) {
             }
             c++; 
         }
+        speed = -speed; // alternate direction
         deltaY += 10;
     }
 } 
@@ -485,25 +486,26 @@ void chest_collide( void )
 }
 
 void move_player(){
-    static uint8_t prevState = 0;
-
-    if ( BIT_VALUE(PIND, 0) && player.x < LCD_X - 5 && playerCollision)
+    // move right
+    if ( rightB_pressed && player.x < LCD_X - 5 && playerCollision)
     {
         if (player.dx < 0.7)
         {
             player.dx += 0.5;
         }        
     }
-    else if (BIT_VALUE(PINB, 1) && player.x > 0 && playerCollision)
+    //move left
+    else if (leftB_pressed && player.x > 0 && playerCollision)
     {
         if (player.dx > -0.7)
         {
             player.dx -= 0.5;
         }
     }
-    else if (BIT_VALUE(PIND, 1) && playerCollision)
+    // jump
+    else if (upB_pressed && playerCollision)
     {
-        player.y -= 3;
+        player.y -= 5;
         // Jumping with horizontal velocity moves further than
         // falling with horizontal velocity
         if (player.dy != 0)
@@ -512,7 +514,7 @@ void move_player(){
         }
     }
     // move downwards, for testing only //TODO remove this
-    else if (BIT_VALUE(PINB, 7) && playerCollision)
+    else if (downB_pressed && playerCollision)
     {
         player.y += 1;
         // Jumping with horizontal velocity moves further than
@@ -522,7 +524,8 @@ void move_player(){
             player.dy *= 1.5;
         }
     }
-    else if (BIT_VALUE(PINF, 5)){ // TODO move this to seperate function (?)
+    //right switch treasure
+    else if (switchR_pressed){ // TODO move this to seperate function (?)
         // TODO debounce this
         treasureMove = !treasureMove;
     }
@@ -585,7 +588,7 @@ void setup_game(){
     sprite_init( &player, 20, 0, 5, 4, player_image);
     sprite_draw( &player);
     sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, chest_image);
-    treasure.dx = 0.1 * GS;
+    treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
 }
 
