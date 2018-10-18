@@ -43,7 +43,7 @@ float pot1Value;
 float platformMultiplyer = 1;
 uint8_t old_block;
 uint8_t Score = 0;
-uint8_t LivesRemaining = 10;
+uint8_t LivesRemaining;
 uint16_t startTime = 1000; 
 
 Sprite treasure;
@@ -359,6 +359,28 @@ void screen_fade_up( uint16_t initBacklightValue, uint8_t contrast){
     }
 }
 
+uint16_t send_to_buffer ( uint8_t x , uint8_t y ){
+    uint8_t bank = y >> 3;
+	uint8_t pixel = y & 7;
+    screen_buffer[bank*LCD_X + x] |= (1 << pixel);
+    return bank*LCD_X + x;
+}
+
+void animate_death ( uint8_t px, uint8_t py ){
+    
+    for ( int i = 0; i < 4; i++){
+        uint16_t pixels[20]; // todo shorten this array length 
+        uint8_t c = 0;
+        for ( int j = 0; j < 5; j++){
+            send_to_buffer (px + i, py + j);
+        }
+        for ( int k = 0; k < c; k++ ) {
+		    lcd_write(LCD_D, screen_buffer[pixels[k]]); // TODO change this to clear
+	    }
+        _delay_ms(300);
+    }
+}
+
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
 void die ( void )
@@ -385,7 +407,7 @@ void die ( void )
     
     if (LivesRemaining == 0)
     {   
-        //animate_death(player.x, player.y);
+        animate_death(player.x, player.y);
         gamePause = true;
     }
 }
@@ -621,7 +643,7 @@ void setup_start(){
 }
 
 void setup_game(){
-    LivesRemaining = 10;
+    LivesRemaining = 1;
     Score = 0;
     //TODO time = 0
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
