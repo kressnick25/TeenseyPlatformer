@@ -23,7 +23,7 @@
 // gs multiplier, alter to change gamespeed.
 #define GS 1.1;
 #define MAX_PSPEED 10
-#define sizeOfPlatforms 28
+#define sizeOfPlatforms 29
 
 //PWM
 #define BIT(x) (1 << (x))
@@ -44,10 +44,11 @@ float platformMultiplyer = 1;
 uint8_t old_block;
 uint8_t Score = 0;
 uint8_t LivesRemaining;
-uint16_t startTime = 1000; 
+uint16_t secondsPast; 
 
 Sprite treasure;
 Sprite player;
+Sprite startingBlock;
 Sprite Platforms[sizeOfPlatforms]; //TODO will storing in progmem affect performance
 
 //debounce //TODO put in array
@@ -68,6 +69,9 @@ volatile uint8_t switchL_pressed;
 volatile uint8_t switchR_pressed;
 
 static uint8_t prevState = 0;
+
+// seconds timer
+volatile uint32_t overflow_counter = 0;
 
 ISR(TIMER0_OVF_vect){
     uint8_t mask = 0b00011111;
@@ -103,6 +107,10 @@ ISR(TIMER0_OVF_vect){
 
 }
 
+ISR(TIMER1_OVF_vect) {
+	overflow_counter++;
+}
+
 // FLASH MEMORY STORAGE;
 const PROGMEM uint8_t player_image[4] = {
     0b00100000,
@@ -127,6 +135,10 @@ uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000
 };
 
+double get_current_time (){
+    double time = ( overflow_counter * 65536.0 + TCNT1) * 1 / 125000;
+    return time;
+}
 
 //Sprite Control
 void sprite_step( sprite_id sprite){
@@ -232,6 +244,7 @@ void create_platforms( void ) {
         speed = -speed; // alternate direction
         deltaY += 10;
     }
+    sprite_init(&Platforms[c], 0, 4, 10, 1, load_rom_bitmap(block_image, 2));
 } 
 
 void draw_platforms( void )
@@ -243,7 +256,7 @@ void draw_platforms( void )
 
 void auto_move_platforms( void )
 {
-    for (int i = 0; i < sizeOfPlatforms; i ++){
+    for (int i = 0; i < sizeOfPlatforms - 1; i ++){
         //if (Platforms[i] != NULL){ // Do not attempt to call empty value
             sprite_step(&Platforms[i]);
             if (Platforms[i].x + 10 < 0){ // Screen LHS
@@ -359,27 +372,21 @@ void screen_fade_up( uint16_t initBacklightValue, uint8_t contrast){
     }
 }
 
-uint16_t send_to_buffer ( uint8_t x , uint8_t y ){
-    uint8_t bank = y >> 3;
-	uint8_t pixel = y & 7;
-    screen_buffer[bank*LCD_X + x] |= (1 << pixel);
-    return bank*LCD_X + x;
-}
-
+/**
+//TODO get help
 void animate_death ( uint8_t px, uint8_t py ){
-    
-    for ( int i = 0; i < 4; i++){
-        uint16_t pixels[20]; // todo shorten this array length 
-        uint8_t c = 0;
-        for ( int j = 0; j < 5; j++){
-            send_to_buffer (px + i, py + j);
+
+    for (int i = 0; i < 4; i++){
+        uint8_t bank = py >> 3;
+        uint8_t byte1 = (bank*LCD_X+px) / 8;
+        lcd_position( byte1 , bank );
+        for (int j = 0; j < 5; j++ ){
+            lcd_write(LCD_D, 1);
         }
-        for ( int k = 0; k < c; k++ ) {
-		    lcd_write(LCD_D, screen_buffer[pixels[k]]); // TODO change this to clear
-	    }
-        _delay_ms(300);
+        _delay_ms(500); 
     }
-}
+    _delay_ms(20000);
+}**/
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
@@ -398,7 +405,7 @@ void die ( void )
         //choose safe platform to move to
         //sprite_id safe_block = choose_safe_block();
         //sprite_move_to(player, safe_block->x, safe_block->y - 3);
-        player.x = 20;
+        player.x = 4;
         player.y = 0;
         player.is_visible = 1;
         show_screen();
@@ -407,7 +414,7 @@ void die ( void )
     
     if (LivesRemaining == 0)
     {   
-        animate_death(player.x, player.y);
+        //animate_death(player.x, player.y); //TODO
         gamePause = true;
     }
 }
@@ -625,6 +632,18 @@ void init_buttons(){
 
 }
 
+void setup_timers(){
+   // setup debounce timers
+    TCCR0A = 0;
+    TCCR0B = 4;
+    TIMSK0 = 1; //Enable timer overflow interrupt for Timer 0.
+    // Timer for get current time
+    TCCR1A = 0;
+    TCCR1B = 3;
+    TIMSK1 = 1;//	(b) Enable timer overflow for Timer 1.
+    sei(); //Turn on interrupts. 
+}
+
 void setup_start(){
     srand(100); //TODO proper timer seed.
     set_clock_speed(CPU_8MHz);
@@ -635,11 +654,7 @@ void setup_start(){
     draw_string(8, 16, "Nicholas Kress", FG_COLOUR);
     draw_string(22, 24, "n9467688", FG_COLOUR);
     show_screen();
-    // setup debounce timers
-    TCCR0A = 0;
-    TCCR0B = 4;
-    TIMSK0 = 1; //Enable timer overflow interrupt for Timer 0.
-    sei(); //Turn on interrupts.
+    setup_timers();
 }
 
 void setup_game(){
@@ -649,9 +664,10 @@ void setup_game(){
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
-    sprite_init( &player, 20, 0, 5, 4, load_rom_bitmap(player_image, 4));
+    sprite_init( &player, 2, 0, 5, 4, load_rom_bitmap(player_image, 4));
     sprite_draw( &player);
     sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, load_rom_bitmap(chest_image, 3));
+    
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
 }
@@ -670,7 +686,6 @@ void game_pause_screen()
         gameOver = true;
     }
     clear_screen();
-    uint16_t secondsPast = startTime; // TODO minus current time
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
     char lives[15];
@@ -694,7 +709,6 @@ void game_pause_screen()
 void gameOverScreen()
 {
     clear_screen();
-    uint16_t secondsPast = startTime; // TODO minus current time
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
     char score[11];
@@ -755,7 +769,7 @@ int main ( void ){
                 auto_move_treasure();
                 draw_all();
                 //DEBUG
-
+                secondsPast = get_current_time();
                 show_screen();
                 _delay_ms(0);
             }
