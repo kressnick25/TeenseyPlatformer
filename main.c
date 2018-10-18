@@ -13,9 +13,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 
 //TODO remove unused libraries
 //TODO convert int to uint8_t where appropriate.
+
+#define MY_LCD_CONTRAST 0x44
 
 // gs multiplier, alter to change gamespeed.
 #define GS 1.1;
@@ -45,7 +48,7 @@ uint16_t startTime = 1000;
 
 Sprite treasure;
 Sprite player;
-Sprite Platforms[sizeOfPlatforms];
+Sprite Platforms[sizeOfPlatforms]; //TODO will storing in progmem affect performance
 
 //debounce //TODO put in array
 volatile uint8_t pause_counter = 0b00000000;
@@ -100,28 +103,30 @@ ISR(TIMER0_OVF_vect){
 
 }
 
-uint8_t player_image[4] = {
+// FLASH MEMORY STORAGE;
+const PROGMEM uint8_t player_image[4] = {
     0b00100000,
     0b11111000,
     0b01010000,
     0b01110000
 };
 
-uint8_t chest_image[3] = {
+const PROGMEM uint8_t chest_image[3] = {
     0b01010000,
     0b10101000,
     0b01110000,
 };
 
-uint8_t block_image[4] = {
+const PROGMEM uint8_t block_image[4] = {
     0b11111111, 0b11000000,
     0b11111111, 0b11000000  
 };
 
-uint8_t bad_image[4] = {
+const PROGMEM uint8_t bad_image[4] = {
     0b10101010, 0b10100000,
     0b10101010, 0b10100000
 };
+
 
 //Sprite Control
 void sprite_step( sprite_id sprite){
@@ -184,10 +189,10 @@ uint8_t* choose_platform_type ( void )
     int i = rand_number(0,8);
     uint8_t* type;
     if (i <= 2){
-        type = block_image;
+        type = load_rom_bitmap(block_image, 4);
     }
     else if (i == 3){
-        type = bad_image;
+        type = load_rom_bitmap(bad_image, 4);
     }
     else{
         type = NULL;
@@ -327,27 +332,65 @@ void backlight_pwm(int duty_cycle){
 	OCR4A = duty_cycle & 0xff;
 }
 
+// cycle contrast and led to 0 with PWM
+void screen_fade_down( long int initBacklightValue, uint8_t contrast ){
+    backlight_pwm(initBacklightValue * 0.75);
+    lcd_init(contrast * 0.9);
+    _delay_ms(300);
+    backlight_pwm(initBacklightValue * 0.5);
+    lcd_init(contrast * 0.8);
+    _delay_ms(300);
+    backlight_pwm(initBacklightValue * 0.25);
+    lcd_init(contrast * 0.7);
+    _delay_ms(300);
+    backlight_pwm(0);
+    lcd_init(contrast * 0);
+    _delay_ms(300);
+}
+
+// cycle contrast and led up to MAX with PWM
+void screen_fade_up(){
+    backlight_pwm(ADC_MAX * 0.25);
+    lcd_init(MY_LCD_CONTRAST * 0.7);
+    _delay_ms(300);
+    backlight_pwm(ADC_MAX * 0.5);
+    lcd_init(MY_LCD_CONTRAST * 0.8);
+    _delay_ms(300);
+    backlight_pwm(ADC_MAX * 0.75);
+    lcd_init(MY_LCD_CONTRAST * 0.9);
+    _delay_ms(300);
+    backlight_pwm(ADC_MAX);
+    lcd_init(MY_LCD_CONTRAST);
+    _delay_ms(300);
+}
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
 void die ( void )
 {   
     //timer_pause(1000); //TODO
-    _delay_ms(1000);
-    player.is_visible = 0;
-    //create_platforms(); //TODO
-    //reset player variables
-    player.dx = 0;
-    player.dy = 0;
-    //choose safe platform to move to
-    //sprite_id safe_block = choose_safe_block();
-    //sprite_move_to(player, safe_block->x, safe_block->y - 3);
-    player.x = 20;
-    player.y = 0;
-    player.is_visible = 1;
+    //_delay_ms(1000);
     LivesRemaining--;
+    if (LivesRemaining != 0){
+        screen_fade_down( ADC_MAX, MY_LCD_CONTRAST );
+        player.is_visible = 0;
+        //create_platforms(); //TODO
+        //reset player variables
+        player.dx = 0;
+        player.dy = 0;
+        //choose safe platform to move to
+        //sprite_id safe_block = choose_safe_block();
+        //sprite_move_to(player, safe_block->x, safe_block->y - 3);
+        player.x = 20;
+        player.y = 0;
+        player.is_visible = 1;
+        show_screen();
+        screen_fade_up();
+    }
+    
     if (LivesRemaining == 0)
-    {
+    {   
+        //animate_death(player.x, player.y);
         gamePause = true;
     }
 }
@@ -451,7 +494,7 @@ void check_out_of_bounds( void )
 }
 
 // Moves chest along bottom of screen
-void move_treasure()
+void auto_move_treasure()
 {
     // Uses code from ZDJ Topic 04
     // Toggle chest movement when 't' pause_pressed.
@@ -470,7 +513,7 @@ void move_treasure()
 void chest_collide( void )
 { 
     // only do if player close proximity to chest, saves cpu time when not needed.
-    if (player.y > LCD_X - 20){ //TODO narrow this down.
+    if (player.y > LCD_Y - 20){ //TODO narrow this down.
         bool collide = pixel_level_collision(&player, &treasure);
         if (collide)
         {
@@ -479,7 +522,7 @@ void chest_collide( void )
             //sprite_hide(chest);
             //TODO destory treasure sprite
             //move treasure off screen, cant collide
-
+            treasure.x = LCD_X + 6;
             die();
         }
     }
@@ -568,7 +611,7 @@ void init_buttons(){
 void setup_start(){
     srand(100); //TODO proper timer seed.
     set_clock_speed(CPU_8MHz);
-    lcd_init(0x44);
+    lcd_init(MY_LCD_CONTRAST);
     init_buttons();
     adc_init(); //init pot1
     // TODO change this to ascii per asci_font.h
@@ -583,11 +626,15 @@ void setup_start(){
 }
 
 void setup_game(){
+    LivesRemaining = 10;
+    Score = 0;
+    //TODO time = 0
+    memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
-    sprite_init( &player, 20, 0, 5, 4, player_image);
+    sprite_init( &player, 20, 0, 5, 4, load_rom_bitmap(player_image, 4));
     sprite_draw( &player);
-    sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, chest_image);
+    sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, load_rom_bitmap(chest_image, 3));
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
 }
@@ -616,15 +663,42 @@ void game_pause_screen()
     sprintf(lives, "%d lives left", LivesRemaining);
     sprintf(score, "Score: %d", Score);
     sprintf(counter, "%02u:%02u", minutes, seconds);
-    
-    draw_string(10,16, lives, FG_COLOUR);
-    draw_string(20,24, score, FG_COLOUR);
-    draw_string(28,32, counter, FG_COLOUR);
+    uint8_t sy = 12;
+    draw_string(10,sy, lives, FG_COLOUR);
+    draw_string(20,sy+8, score, FG_COLOUR);
+    draw_string(28,sy+16, counter, FG_COLOUR);
     show_screen();
     /**
     if (BIT_VALUE(PINB, 0)){ //TODO debounce this
         gamePause = false;
     }**/
+}
+
+void gameOverScreen()
+{
+    clear_screen();
+    uint16_t secondsPast = startTime; // TODO minus current time
+    uint8_t minutes = (secondsPast /60) % 60;
+    uint8_t seconds = secondsPast % 60;
+    char score[11];
+    char counter[10]; 
+
+    sprintf(score, "Score: %d", Score);
+    sprintf(counter, "%02u:%02u", minutes, seconds);
+    
+    uint8_t sy = 12;
+    draw_string(18,sy, "Game Over", FG_COLOUR);
+    draw_string(20,sy+8, score, FG_COLOUR);
+    draw_string(28,sy+16, counter, FG_COLOUR);
+    show_screen();
+    if (switchR_pressed){
+        gamePause = false;
+        gameOver = false;
+        
+    }
+    if (switchL_pressed){
+        gameExit = true;
+    }
 }
 
 int main ( void ){
@@ -639,38 +713,43 @@ int main ( void ){
         _delay_ms(100);
     }
 
-    setup_game();
+    
 
     while(!gameExit)
-    {
+    {   
+        
         while(!gameOver)
         {   
+            setup_game();
             while(!gamePause)
             {
                 clear_screen();
-                long left_adc = adc_read(0);
-                backlight_pwm(ADC_MAX - left_adc);
+                //long left_adc = adc_read(0);
+                //backlight_pwm(ADC_MAX - left_adc);
                 check_out_of_bounds();
                 platforms_collide();
-                chest_collide(); //TODO not working
                 check_pot();
                 gravity();
                 move_player();
                 if (treasureMove) sprite_step(&treasure);
                 sprite_step(&player);
+                chest_collide(); //TODO not working
                 auto_move_platforms();
-                move_treasure();
+                auto_move_treasure();
                 draw_all();
+                //DEBUG
+
                 show_screen();
                 _delay_ms(0);
             }
             game_pause_screen();
             move_player();  
         }
-        // gameOverScreen();
-        clear_screen();
-        show_screen();
+        gameOverScreen();
     }
+    clear_screen();
+    draw_string(20, 16, "n9467688", FG_COLOUR);
+    show_screen();
     return 0;
 }
 
