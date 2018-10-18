@@ -23,7 +23,7 @@
 // gs multiplier, alter to change gamespeed.
 #define GS 1.1;
 #define MAX_PSPEED 10
-#define sizeOfPlatforms 29
+#define sizeOfPlatforms 28
 
 //PWM
 #define BIT(x) (1 << (x))
@@ -38,6 +38,9 @@ bool gameExit = false;
 //bool gravity;
 bool playerCollision = true;
 bool treasureMove = true;
+bool playerMovingRight = false;
+bool playerMovingLeft = true;
+bool playerJumping = false;
 //TODO put these in struct
 float pot1Value; 
 float platformMultiplyer = 1;
@@ -45,6 +48,11 @@ uint8_t old_block;
 uint8_t Score = 0;
 uint8_t LivesRemaining;
 uint16_t secondsPast; 
+
+//DEBUGGING
+bool starting_platform = false;
+
+#define playerSpawnX 20
 
 Sprite treasure;
 Sprite player;
@@ -74,7 +82,7 @@ volatile uint8_t switchR_pressed;
 volatile uint32_t overflow_counter = 0;
 
 ISR(TIMER0_OVF_vect){
-    uint8_t mask = 0b01111111;
+    uint8_t mask = 0b11111111;
 
     //pause button
     pause_counter = ((pause_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
@@ -245,7 +253,9 @@ void create_platforms( void ) {
         speed = -speed; // alternate direction
         deltaY += 10;
     }
-    sprite_init(&Platforms[c], 0, 4, 10, 1, load_rom_bitmap(block_image, 2));
+    if (starting_platform){
+        sprite_init(&Platforms[c], 0, 4, 10, 1, load_rom_bitmap(block_image, 2));
+    }
 } 
 
 void draw_platforms( void )
@@ -257,7 +267,14 @@ void draw_platforms( void )
 
 void auto_move_platforms( void )
 {
-    for (int i = 0; i < sizeOfPlatforms - 1; i ++){
+    int k = 0;
+    if (starting_platform){
+        k = sizeOfPlatforms - 1;
+    }
+    else{
+        k = sizeOfPlatforms;
+    }
+    for (int i = 0; i < k; i ++){
         //if (Platforms[i] != NULL){ // Do not attempt to call empty value
             sprite_step(&Platforms[i]);
             if (Platforms[i].x + 10 < 0){ // Screen LHS
@@ -307,7 +324,10 @@ void gravity( void )
     // When falling (negative velocity) double velocity
     else if (player.dy > 0 && player.dy < 0.9)
     {
-        player.dy += 0.1;
+        player.dy += 0.2;
+        if (player.dy > 1.0){
+            player.dy = 1.0;
+        }
     }
     // When jump peak reached, flip velocity to negative
     else if(player.dy > -0.2 && player.dy < 0)
@@ -319,11 +339,13 @@ void gravity( void )
     {
         player.dy = 0.1;
     }
-    /**
-    // Apply accumulated 'momentum' to player speed when off block.
-    if(!playerCollision){
-        player->dx = momentum;
-    }**/
+    
+    if (!playerCollision && playerMovingLeft && !playerJumping){
+        player.dx = -0.5;
+    }
+    else if (!playerCollision && playerMovingRight && !playerJumping){
+        player.dx = 0.5;
+    }
 }
 
 void backlight_pwm(int duty_cycle){
@@ -406,7 +428,7 @@ void die ( void )
         //choose safe platform to move to
         //sprite_id safe_block = choose_safe_block();
         //sprite_move_to(player, safe_block->x, safe_block->y - 3);
-        player.x = 4;
+        player.x = playerSpawnX;
         player.y = 0;
         player.is_visible = 1;
         show_screen();
@@ -467,6 +489,27 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
     return false;
 }
 
+void update_player_speed( uint8_t platformNumber ){
+    uint8_t i = platformNumber;
+    float moveSpeed = 0.3;
+    float struggleSpeed = 0.6;
+    if (playerMovingLeft && Platforms[i].dx < 0){
+        player.dx = -moveSpeed + Platforms[i].dx;
+    }
+    else if (playerMovingRight && Platforms[i].dx > 0){
+        player.dx = moveSpeed + Platforms[i].dx;
+    }
+    else if (playerMovingLeft && Platforms[i].dx > 0){
+        player.dx = -struggleSpeed + Platforms[i].dx;
+    }
+    else if (playerMovingRight && Platforms[i].dx < 0){
+        player.dx = struggleSpeed + Platforms[i].dx;
+    }
+    else if (!playerMovingLeft && !playerMovingRight){
+        player.dx = Platforms[i].dx;
+    }
+}
+
 // Checks for collision between the player and each block 'Platforms' array
 bool platforms_collide( void ) 
 {
@@ -491,7 +534,8 @@ bool platforms_collide( void )
                         die();
                     }
                     // Update player speed so that player moves with platform on
-                    player.dx = Platforms[i].dx;
+                    update_player_speed(i);
+                    playerJumping = false;
                     output = true;
                     if (c == 0){
                         c = i;
@@ -556,40 +600,35 @@ void chest_collide( void )
 void move_player(){
     // move right
     if ( rightB_pressed && player.x < LCD_X - 5 && playerCollision)
-    {
-        if (player.dx < 0.7)
-        {
-            player.dx += 0.5;
-        }        
+    {   
+        if (playerMovingLeft){
+            playerMovingLeft = false;
+        }
+        else{
+            playerMovingRight = true;
+        }
     }
     //move left
     else if (leftB_pressed && player.x > 0 && playerCollision)
     {
-        if (player.dx > -0.7)
-        {
-            player.dx -= 0.5;
+        if (playerMovingRight){
+            playerMovingRight = false;
+        }
+        else{
+            playerMovingLeft = true;
         }
     }
     // jump
     else if (upB_pressed && playerCollision)
-    {
+    {   
+        playerJumping = true;
         player.y -= 5;
-        // Jumping with horizontal velocity moves further than
-        // falling with horizontal velocity
-        if (player.dy != 0)
-        { 
-            player.dy *= 1.5;
+        // Horizontal movement when jumping
+        if (playerMovingLeft){
+            player.dx = -1.7;
         }
-    }
-    // move downwards, for testing only //TODO remove this
-    else if (downB_pressed && playerCollision)
-    {
-        player.y += 1;
-        // Jumping with horizontal velocity moves further than
-        // falling with horizontal velocity
-        if (player.dy != 0)
-        { 
-            player.dy *= 1.5;
+        else if (playerMovingRight){
+            player.dx = 1.7;
         }
     }
     //right switch treasure
@@ -663,7 +702,7 @@ void setup_game(){
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
-    sprite_init( &player, 2, 0, 5, 4, load_rom_bitmap(player_image, 4));
+    sprite_init( &player, playerSpawnX, 0, 5, 4, load_rom_bitmap(player_image, 4));
     sprite_draw( &player);
     sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, load_rom_bitmap(chest_image, 3));
     
