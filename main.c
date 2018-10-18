@@ -333,35 +333,30 @@ void backlight_pwm(int duty_cycle){
 }
 
 // cycle contrast and led to 0 with PWM
-void screen_fade_down( long int initBacklightValue, uint8_t contrast ){
-    backlight_pwm(initBacklightValue * 0.75);
-    lcd_init(contrast * 0.9);
-    _delay_ms(300);
-    backlight_pwm(initBacklightValue * 0.5);
-    lcd_init(contrast * 0.8);
-    _delay_ms(300);
-    backlight_pwm(initBacklightValue * 0.25);
-    lcd_init(contrast * 0.7);
-    _delay_ms(300);
-    backlight_pwm(0);
-    lcd_init(contrast * 0);
-    _delay_ms(300);
+void screen_fade_down( uint16_t initBacklightValue, uint8_t contrast ){
+    float c = 0.75;
+    float b = 0.9;
+    for (uint8_t i = 0; i < 4; i++){
+        if (i == 3){ b = 0, c = 0; }
+        backlight_pwm(initBacklightValue * c);
+        lcd_init(contrast * b);
+        _delay_ms(300);
+        c -= 0.25;
+        b -= 0.1;
+    }
 }
 
 // cycle contrast and led up to MAX with PWM
-void screen_fade_up(){
-    backlight_pwm(ADC_MAX * 0.25);
-    lcd_init(MY_LCD_CONTRAST * 0.7);
-    _delay_ms(300);
-    backlight_pwm(ADC_MAX * 0.5);
-    lcd_init(MY_LCD_CONTRAST * 0.8);
-    _delay_ms(300);
-    backlight_pwm(ADC_MAX * 0.75);
-    lcd_init(MY_LCD_CONTRAST * 0.9);
-    _delay_ms(300);
-    backlight_pwm(ADC_MAX);
-    lcd_init(MY_LCD_CONTRAST);
-    _delay_ms(300);
+void screen_fade_up( uint16_t initBacklightValue, uint8_t contrast){
+    float c = 0.25;
+    float b = 0.7;
+    for (uint8_t i = 0; i < 4; i++){
+        backlight_pwm(initBacklightValue * c);
+        lcd_init(contrast * b);
+        _delay_ms(300);
+        c += 0.25;
+        b += 0.1;
+    }
 }
 
 // Called when player collides with forbidden block or moves out of bounds
@@ -385,7 +380,7 @@ void die ( void )
         player.y = 0;
         player.is_visible = 1;
         show_screen();
-        screen_fade_up();
+        screen_fade_up( ADC_MAX, MY_LCD_CONTRAST );
     }
     
     if (LivesRemaining == 0)
