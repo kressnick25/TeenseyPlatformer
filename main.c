@@ -68,13 +68,13 @@ volatile uint8_t downB_pressed;
 volatile uint8_t switchL_pressed;
 volatile uint8_t switchR_pressed;
 
-static uint8_t prevState = 0;
+//static uint8_t prevState = 0;
 
 // seconds timer
 volatile uint32_t overflow_counter = 0;
 
 ISR(TIMER0_OVF_vect){
-    uint8_t mask = 0b00011111;
+    uint8_t mask = 0b01111111;
 
     //pause button
     pause_counter = ((pause_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
@@ -135,6 +135,7 @@ uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000
 };
 
+// Returns seconds past - code used from AMS Topic 9 ex 2
 double get_current_time (){
     double time = ( overflow_counter * 65536.0 + TCNT1) * 1 / 125000;
     return time;
@@ -304,9 +305,9 @@ void gravity( void )
         player.dy *= 0.3;
     }
     // When falling (negative velocity) double velocity
-    else if (player.dy > 0 && player.dy < 2.0)
+    else if (player.dy > 0 && player.dy < 0.9)
     {
-        player.dy += 1;
+        player.dy += 0.1;
     }
     // When jump peak reached, flip velocity to negative
     else if(player.dy > -0.2 && player.dy < 0)
@@ -433,7 +434,7 @@ void increase_score(int new_block)
 bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 {       // Uses code from AMS wk5.
         // Only check bottom of player model, stops player getting stuck in blocks.
-    uint8_t y = round(s1->y + 4);
+    uint8_t y = round(s1->y + 3);
     //int xcor[5] = {0, 4, 1, 2, 3};
     //int ycor[5] = {1, 1, 4, 4, 4};
     //for (uint8_t y = s1->y; y < s1->y + s1->height; y++){
@@ -446,7 +447,7 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
             uint8_t offset1 = sy1 * s1->width + sx1;
 
             uint8_t sx2 = x - round(s2->x);
-            uint8_t sy2 = y - round(s2->y);
+            uint8_t sy2 = y - round(s2->y-1);
             uint8_t offset2 = sy2 * s2->width + sx2;
             
             // If opaque at both points, collisio has occured
@@ -593,18 +594,16 @@ void move_player(){
     }
     //right switch treasure
     else if (switchR_pressed){ // TODO move this to seperate function (?)
-        // TODO debounce this
         treasureMove = !treasureMove;
     }
     /**
-    else if (BIT_VALUE(PINB, 0)){ // TODO move to seperate function
-        gamePause = true; //TODO debounce this
-    }**/
-    
     else if ( pause_pressed != prevState ) {
 		prevState = pause_pressed;
 		gamePause = !gamePause;
-	}
+	}**/
+    else if (pause_pressed){
+        gamePause = true;
+    }
     else 
     {
         if (player.dx > 0.0){
@@ -658,7 +657,7 @@ void setup_start(){
 }
 
 void setup_game(){
-    LivesRemaining = 1;
+    LivesRemaining = 10;
     Score = 0;
     //TODO time = 0
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
@@ -700,10 +699,10 @@ void game_pause_screen()
     draw_string(20,sy+8, score, FG_COLOUR);
     draw_string(28,sy+16, counter, FG_COLOUR);
     show_screen();
-    /**
-    if (BIT_VALUE(PINB, 0)){ //TODO debounce this
+    if (pause_pressed){
+        _delay_ms(200);
         gamePause = false;
-    }**/
+    }
 }
 
 void gameOverScreen()
@@ -723,6 +722,7 @@ void gameOverScreen()
     draw_string(28,sy+16, counter, FG_COLOUR);
     show_screen();
     if (switchR_pressed){
+        setup_game();
         gamePause = false;
         gameOver = false;
         
@@ -744,14 +744,13 @@ int main ( void ){
         _delay_ms(100);
     }
 
-    
+    setup_game();
 
     while(!gameExit)
     {   
         
         while(!gameOver)
         {   
-            setup_game();
             while(!gamePause)
             {
                 clear_screen();
@@ -773,8 +772,7 @@ int main ( void ){
                 show_screen();
                 _delay_ms(0);
             }
-            game_pause_screen();
-            move_player();  
+            game_pause_screen();  
         }
         gameOverScreen();
     }
