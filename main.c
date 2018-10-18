@@ -122,7 +122,7 @@ const PROGMEM uint8_t block_image[4] = {
     0b11111111, 0b11000000  
 };
 
-const PROGMEM uint8_t bad_image[4] = {
+uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000,
     0b10101010, 0b10100000
 };
@@ -192,7 +192,7 @@ uint8_t* choose_platform_type ( void )
         type = load_rom_bitmap(block_image, 4);
     }
     else if (i == 3){
-        type = load_rom_bitmap(bad_image, 4);
+        type = bad_image; //load_rom_bitmap(bad_image, 4);
     }
     else{
         type = NULL;
