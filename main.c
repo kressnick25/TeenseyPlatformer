@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#include <math.h>
 
 //TODO remove unused libraries
 //TODO convert int to uint8_t where appropriate.
@@ -41,7 +42,6 @@ bool treasureMove = true;
 bool playerMovingRight = false;
 bool playerMovingLeft = true;
 bool playerJumping = false;
-bool ledOn = true;
 //TODO put these in struct
 float pot1Value; 
 float platformMultiplyer = 1;
@@ -85,7 +85,7 @@ volatile uint32_t time_overflow_counter = 0;
 volatile uint32_t led_overflow_counter = 0;
 
 ISR(TIMER0_OVF_vect){
-    uint8_t mask = 0b11111111;
+    uint8_t mask = 0b00000011;
 
     //pause button
     pause_counter = ((pause_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
@@ -120,18 +120,6 @@ ISR(TIMER0_OVF_vect){
 
 ISR(TIMER1_OVF_vect) {
 	time_overflow_counter++;
-    //if (time_overflow_counter % 2){
-        //&& zombies.dx != 0); TODO
-        if (ledOn){
-            SET_BIT(PORTB, 2);
-            SET_BIT(PORTB, 3);
-        }
-        else{
-            CLEAR_BIT(PORTB, 2);
-            CLEAR_BIT(PORTB, 3);
-        }
-        ledOn = !ledOn;
-    //}
 }
 
 
@@ -164,7 +152,18 @@ double get_current_time (){
     double time = ( time_overflow_counter * 65536.0 + TCNT1) * 1 / 125000;
     return time;
 }
-
+void get_led_flash (){
+    int time = (( time_overflow_counter * 65536.0 + TCNT1) * 1 / 125000)*8;
+    if(time%2==0){
+        //&& zombies.dx != 0); TODO
+        SET_BIT(PORTB, 2);
+        SET_BIT(PORTB, 3);
+    }
+    else{
+        CLEAR_BIT(PORTB, 2);
+        CLEAR_BIT(PORTB, 3);
+    }
+}
 //Sprite Control
 void sprite_step( sprite_id sprite){
     sprite->x += sprite->dx;
@@ -417,7 +416,7 @@ void animate_death ( ){
     for (int i = 0; i < 7; i++){
         lcd_position(0, i);
         for (int j = 0; j < 84; j++){
-            lcd_write(LCD_D, 0b11111111);
+            lcd_write(LCD_D, 0b01010101);
         }
         _delay_ms(500); 
     }
@@ -590,36 +589,51 @@ void auto_move_treasure()
     }
 }
 
+//from zdj
+bool sprites_collide(Sprite s1, Sprite s2)
+{
+    int top1 = round(s1.y);
+    int bottom1 = top1 + s1.height - 1;
+    int left1 = round(s1.x);
+    int right1 = left1 + s1.width - 1;
+
+    int top2 = round(s2.y);
+    int bottom2 = top2 + s2.height - 1;
+    int left2 = round(s2.x);
+    int right2 = left2 + s2.width - 1;
+
+    if(top1 > bottom2)
+    {
+        return false;
+    }
+    else if(top2 > bottom1)
+    {
+        return false;
+    }
+    else if(right1 < left2)
+    {
+        return false;
+    }
+    else if(right2 < left1)
+    {
+        return false;
+    }
+    else{
+        return true;
+    }
+
+    //Alternatively
+    // return !( (top > bottom2) || (top2 > bottom1) || (right1 < left2) || (right2 < left1));
+}
+
 // Checks for player collision with chest, hides chest upon collision
 void chest_collide( void )
 { 
-    // only do if player close proximity to chest, saves cpu time when not needed.
-    if (player.y > LCD_Y - 20){ //TODO narrow this down.
-        bool collide = pixel_level_collision(&player, &treasure);
-        if (collide)
-        {
-            LivesRemaining += 3;
-            //hide_chest_timer = create_timer(2000);
-            //sprite_hide(chest);
-            //TODO destory treasure sprite
-            //move treasure off screen, cant collide
-            treasure.x = LCD_X + 6;
-            die();
-        }
+    bool collide = sprites_collide(player, treasure);
+    if (collide){
+        treasure.x = LCD_X + 6;
+        die();
     }
-}
-
-void flash_led(){
-    //&& zombies.dx != 0); TODO
-    if (ledOn){
-        SET_BIT(PORTB, 2);
-        SET_BIT(PORTB, 3);
-    }
-    else{
-        CLEAR_BIT(PORTB, 2);
-        CLEAR_BIT(PORTB, 3);
-    }
-    ledOn = !ledOn;
 }
 
 void move_player(){
@@ -838,6 +852,7 @@ int main ( void ){
                 draw_all();
                 //DEBUG
                 secondsPast = get_current_time();
+                get_led_flash();
                 show_screen();
                 _delay_ms(10);
             }
