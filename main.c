@@ -854,7 +854,7 @@ int main ( void ){
                 secondsPast = get_current_time();
                 get_led_flash();
                 show_screen();
-                _delay_ms(10);
+                _delay_ms(0); // TODO actual interupt service.
             }
             game_pause_screen();  
         }
