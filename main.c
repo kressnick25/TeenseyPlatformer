@@ -41,6 +41,7 @@ bool treasureMove = true;
 bool playerMovingRight = false;
 bool playerMovingLeft = true;
 bool playerJumping = false;
+bool ledOn = true;
 //TODO put these in struct
 float pot1Value; 
 float platformMultiplyer = 1;
@@ -58,6 +59,7 @@ Sprite treasure;
 Sprite player;
 Sprite startingBlock;
 Sprite Platforms[sizeOfPlatforms]; //TODO will storing in progmem affect performance
+Sprite Zombies[5]; // for all zombies if zombie.dy = 0; stop flashing
 
 //debounce //TODO put in array
 volatile uint8_t pause_counter = 0b00000000;
@@ -79,7 +81,8 @@ volatile uint8_t switchR_pressed;
 //static uint8_t prevState = 0;
 
 // seconds timer
-volatile uint32_t overflow_counter = 0;
+volatile uint32_t time_overflow_counter = 0;
+volatile uint32_t led_overflow_counter = 0;
 
 ISR(TIMER0_OVF_vect){
     uint8_t mask = 0b11111111;
@@ -116,8 +119,21 @@ ISR(TIMER0_OVF_vect){
 }
 
 ISR(TIMER1_OVF_vect) {
-	overflow_counter++;
+	time_overflow_counter++;
+    //if (time_overflow_counter % 2){
+        //&& zombies.dx != 0); TODO
+        if (ledOn){
+            SET_BIT(PORTB, 2);
+            SET_BIT(PORTB, 3);
+        }
+        else{
+            CLEAR_BIT(PORTB, 2);
+            CLEAR_BIT(PORTB, 3);
+        }
+        ledOn = !ledOn;
+    //}
 }
+
 
 // FLASH MEMORY STORAGE;
 const PROGMEM uint8_t player_image[4] = {
@@ -145,7 +161,7 @@ uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
 
 // Returns seconds past - code used from AMS Topic 9 ex 2
 double get_current_time (){
-    double time = ( overflow_counter * 65536.0 + TCNT1) * 1 / 125000;
+    double time = ( time_overflow_counter * 65536.0 + TCNT1) * 1 / 125000;
     return time;
 }
 
@@ -395,21 +411,17 @@ void screen_fade_up( uint16_t initBacklightValue, uint8_t contrast){
     }
 }
 
-/**
-//TODO get help
-void animate_death ( uint8_t px, uint8_t py ){
 
-    for (int i = 0; i < 4; i++){
-        uint8_t bank = py >> 3;
-        uint8_t byte1 = (bank*LCD_X+px) / 8;
-        lcd_position( byte1 , bank );
-        for (int j = 0; j < 5; j++ ){
-            lcd_write(LCD_D, 1);
+//TODO get help
+void animate_death ( ){
+    for (int i = 0; i < 7; i++){
+        lcd_position(0, i);
+        for (int j = 0; j < 84; j++){
+            lcd_write(LCD_D, 0b11111111);
         }
         _delay_ms(500); 
     }
-    _delay_ms(20000);
-}**/
+}
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
@@ -437,7 +449,7 @@ void die ( void )
     
     if (LivesRemaining == 0)
     {   
-        //animate_death(player.x, player.y); //TODO
+        animate_death();
         gamePause = true;
     }
 }
@@ -456,7 +468,7 @@ void increase_score(int new_block)
 bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 {       // Uses code from AMS wk5.
         // Only check bottom of player model, stops player getting stuck in blocks.
-    uint8_t y = round(s1->y + 3);
+    uint8_t y = round(s1->y + 3); // add line 1 ie 5 pixel line
     //int xcor[5] = {0, 4, 1, 2, 3};
     //int ycor[5] = {1, 1, 4, 4, 4};
     //for (uint8_t y = s1->y; y < s1->y + s1->height; y++){
@@ -597,6 +609,19 @@ void chest_collide( void )
     }
 }
 
+void flash_led(){
+    //&& zombies.dx != 0); TODO
+    if (ledOn){
+        SET_BIT(PORTB, 2);
+        SET_BIT(PORTB, 3);
+    }
+    else{
+        CLEAR_BIT(PORTB, 2);
+        CLEAR_BIT(PORTB, 3);
+    }
+    ledOn = !ledOn;
+}
+
 void move_player(){
     // move right
     if ( rightB_pressed && player.x < LCD_X - 5 && playerCollision)
@@ -641,6 +666,7 @@ void move_player(){
 		gamePause = !gamePause;
 	}**/
     else if (pause_pressed){
+        _delay_ms(200);
         gamePause = true;
     }
     else 
@@ -662,11 +688,13 @@ void init_buttons(){
     CLEAR_BIT( DDRB, 1 ); // joystick left 
     CLEAR_BIT( DDRD, 0 ); // joystick right
     CLEAR_BIT( DDRB, 0 ); // joystick centre click
-    // TODO LED's
-    
+    // LED's
+    SET_BIT(DDRB, 2);
+    SET_BIT(DDRB, 3);
     // Backlight
     SET_BIT(DDRC, 7);
     SET_BIT(PORTC, 7);
+
 
 }
 
@@ -679,6 +707,7 @@ void setup_timers(){
     TCCR1A = 0;
     TCCR1B = 3;
     TIMSK1 = 1;//	(b) Enable timer overflow for Timer 1.
+
     sei(); //Turn on interrupts. 
 }
 
@@ -698,6 +727,7 @@ void setup_start(){
 void setup_game(){
     LivesRemaining = 10;
     Score = 0;
+    time_overflow_counter = 0;
     //TODO time = 0
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
@@ -783,7 +813,7 @@ int main ( void ){
         _delay_ms(100);
     }
 
-    setup_game();
+    setup_game(); // move inside game loop
 
     while(!gameExit)
     {   
@@ -809,7 +839,7 @@ int main ( void ){
                 //DEBUG
                 secondsPast = get_current_time();
                 show_screen();
-                _delay_ms(0);
+                _delay_ms(10);
             }
             game_pause_screen();  
         }
