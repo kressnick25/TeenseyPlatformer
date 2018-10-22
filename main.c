@@ -431,41 +431,51 @@ void animate_death ( ){
     }
 }
 
-//TODO do this for all serial comms
-const unsigned char serialGameStart[50] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
+//TODO change to array? 
+//TODO format minutes/seconds
+// store each seperately to save space.
+const unsigned char serialText_GameStart[44] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
+const unsigned char serialText_Death[57] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
+const unsigned char serialText_Respawn[40] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
+const unsigned char serialText_ZombiesAppear[72] PROGMEM = "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n";
+const unsigned char serialText_ZombieFood[79] PROGMEM = "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n";
+const unsigned char serialText_ChestCollide[86] PROGMEM = "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n";
+const unsigned char serialText_Pause[81] PROGMEM = "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n";
+const unsigned char serialText_GameOver[81] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
 
 void serial_comms ( uint8_t event, char* death_type ){
-    char output[150];
+    char output[86]; // allocate max for largest text
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
+    //TODO format minutes/seconds
     if (event == 1){ // Game Start
-        sprintf(output, (char*)load_rom_string(serialGameStart), player.x, player.y);
+        sprintf(output, (char*)load_rom_string(serialText_GameStart), player.x, player.y);
     }
     else if (event == 2){ // Player Death
-        sprintf(output, "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n", 
+        sprintf(output, (char*)load_rom_string(serialText_Death), 
                                                 death_type, LivesRemaining, Score, minutes, seconds);
     }
     else if (event == 3){ //Player Respawn
-        sprintf(output, "Respawn - player position: %.0f, %.0f\r\n", player.x, player.y);
+        sprintf(output, (char*)load_rom_string(serialText_Respawn), player.x, player.y);
     }
     else if (event == 4){ // Zombies Appear
         //TODO zombies appear
-        sprintf(output, "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n", 5, minutes, seconds, LivesRemaining, Score );
+        sprintf(output, (char*)load_rom_string(serialText_ZombiesAppear), 5, minutes, seconds, LivesRemaining, Score );
     }
     else if (event == 5){ //Zombie eats food
         // TODO num zombies
-        sprintf(output, "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n", 5, numFood, minutes, seconds);
+        sprintf(output, (char*)load_rom_string(serialText_ZombieFood), 5, numFood, minutes, seconds);
     }
     else if (event == 6){ //Chest Collide
-        sprintf(output, "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n", Score, LivesRemaining, minutes, seconds, player.x, player.y);
+        sprintf(output, (char*)load_rom_string(serialText_ChestCollide), Score, LivesRemaining, minutes, seconds, player.x, player.y);
     }
     else if (event == 7){ // Pause Button
         //TODO num_Zombies
-        sprintf(output, "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n", LivesRemaining, Score, minutes, seconds, 5, numFood);
+        sprintf(output, (char*)load_rom_string(serialText_Pause), LivesRemaining, Score, minutes, seconds, 5, numFood);
     }
     else if (event == 8){ //Game Over
         //TODO zombies fed
-        sprintf(output, "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n", Score, minutes, seconds, 0);
+        sprintf(output, (char*)load_rom_string(serialText_GameOver), Score, minutes, seconds, 0);
     }
     
     usb_serial_send(output);

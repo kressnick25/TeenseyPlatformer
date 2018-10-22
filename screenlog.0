@@ -1512,3 +1512,24 @@ Game Over - Lives: 0, Score: 19, time: 0:53, Zombies_Fed: 0
 Game Over - Lives: 0, Score: 19, time: 0:53, Zombies_Fed: 0
 Game Over - Lives: 0, Score: 19, time: 0:53, Zombies_Fed: 0
 Game Over - Lives: 0, Score: 19, time: 0:53, Zombies_Fed: 0
+Game Start - player positon: 20 , 0 
+Death - reason: block_off_screen, lives: 9, score: 2, time: 0:4 
+Respawn - player position: 20, 0
+Death - reason: bad_platform, lives: 8, score:Respawn - player position: 20, 0
+€Respawn - player position: 20, 0
+€Respawn - player position: 20, 0
+€Respawn - player position: 20, 0
+€Respawn - player position: 20, 0
+€Game Start - player positon: 20 , 0 
+Death - reason: block_off_screen, lives: 9, score: 3, time: 0:4 
+Respawn - player position: 20, 0
+Death - reason: bad_platform, lives: 8, score: 3, time: 0:7 
+Respawn - player position: 20, 0
+Game Start - player positon: 20 , 0 
+Death - reason: block_off_screen, lives: 9, score: 1, time: 0:3 
+Respawn - player position: 20, 0
+Death - reason: block_off_screen, lives: 8, score: 3, time: 0:7 
+Respawn - player position: 20, 0
+Pause - Lives: 8, Score: 4, time: 0:9, num_Zombies: 5, Food_Remaining: 5
+Game Start - player positon: 20 , 0 
+Pause - Lives: 10, Score: 2, time: 0:1, num_Zombies: 5, Food_Remaining: 5
