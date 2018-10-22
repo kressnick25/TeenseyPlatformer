@@ -159,6 +159,15 @@ uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000
 };
 
+/* Code from topic 10 - USB serial examples
+**	Transmits a string via usb_serial.
+*/
+void usb_serial_send(char * message) {
+	// Cast to avoid "error: pointer targets in passing argument 1 
+	//	of 'usb_serial_write' differ in signedness"
+	usb_serial_write((uint8_t *) message, strlen(message));
+}
+
 void init_food ( void ){
     for (uint8_t i = 0; i < 5; i++){
         // Initially store food off screen and in_visible
@@ -632,6 +641,7 @@ void chest_collide( void )
     bool collide = sprites_collide(player, treasure);
     if (collide){
         treasure.x = LCD_X + 6;
+        LivesRemaining += 3;
         die();
     }
 }
@@ -646,7 +656,7 @@ bool check_serial (int character){
 
 void control_player(){
     // move right
-    if ( (rightB_pressed && player.x < LCD_X - 5 && playerCollision) || check_serial('d') )
+    if ( (rightB_pressed && player.x < LCD_X - 5 && playerCollision))
     {   
         if (playerMovingLeft){
             playerMovingLeft = false;
@@ -656,7 +666,7 @@ void control_player(){
         }
     }
     //move left
-    else if ((leftB_pressed && player.x > 0 && playerCollision) || check_serial('a'))
+    else if ((leftB_pressed && player.x > 0 && playerCollision))
     {
         if (playerMovingRight){
             playerMovingRight = false;
@@ -666,7 +676,7 @@ void control_player(){
         }
     }
     // jump
-    else if ((upB_pressed && playerCollision) || check_serial('w'))
+    else if ((upB_pressed && playerCollision))
     {   
         playerJumping = true;
         player.y -= 5;
@@ -679,10 +689,10 @@ void control_player(){
         }
     }
     //right switch treasure
-    else if (switchR_pressed || check_serial('t')){ // TODO move this to seperate function (?)
+    else if (switchR_pressed){ // TODO move this to seperate function (?)
         treasureMove = !treasureMove;
     }
-    else if ((downB_pressed && playerCollision) || check_serial('s')){ // TODO better debounce
+    else if ((downB_pressed && playerCollision)){ // TODO better debounce
         drop_food();
     }
     /**
@@ -690,10 +700,51 @@ void control_player(){
 		prevState = pause_pressed;
 		gamePause = !gamePause;
 	}**/
-    else if (pause_pressed || check_serial('p')){
+    else if (pause_pressed){
         _delay_ms(200);
         gamePause = true;
     }
+
+    if ( usb_serial_available() ) {
+		int c = usb_serial_getchar();
+		if ( c == 'd' && player.x < LCD_X - 5 && playerCollision){
+            if (playerMovingLeft){
+            playerMovingLeft = false;
+            }
+            else{
+                playerMovingRight = true;
+            }
+        }
+        else if (c == 'a' && player.x > 0 && playerCollision){
+            if (playerMovingRight){
+            playerMovingRight = false;
+            }
+            else{
+                playerMovingLeft = true;
+            }
+        }
+        else if ( c == 'w' && playerCollision){
+            playerJumping = true;
+            player.y -= 5;
+            // Horizontal movement when jumping
+            if (playerMovingLeft){
+                player.dx = -1.7;
+            }
+            else if (playerMovingRight){
+                player.dx = 1.7;
+            }
+        }
+        else if ( c == 't'){
+            treasureMove = !treasureMove;
+        }
+        else if ( c == 's' && playerCollision){
+            drop_food();
+        }
+        else if ( c == 'p'){
+            _delay_ms(200);
+            gamePause = true;
+        }
+	}
     else 
     {
         if (player.dx > 0.0){
@@ -762,6 +813,10 @@ void setup_game(){
     init_food();
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
+    // SERIAL
+    char gameStart[50];
+    sprintf(gameStart, "Game Start: player at positon %.0f , %.0f", player.x, player.y);
+    usb_serial_send(gameStart);
 }
 
 // draw sprites in order of overlap - sprites draw last on top.
