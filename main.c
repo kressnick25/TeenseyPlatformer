@@ -48,7 +48,7 @@ bool playerJumping = false;
 //TODO put these in struct
 float pot1Value; 
 float platformMultiplyer = 1;
-uint8_t old_block;
+uint8_t current_block;
 uint8_t Score = 0;
 uint8_t LivesRemaining;
 uint16_t secondsPast; 
@@ -64,6 +64,7 @@ Sprite player;
 Sprite startingBlock;
 Sprite Platforms[sizeOfPlatforms];
 Sprite Zombies[5]; // for all zombies if zombie.dy = 0; stop flashing
+Sprite Food[5];
 
 //debounce //TODO put in array
 volatile uint8_t pause_counter = 0b00000000;
@@ -90,7 +91,7 @@ volatile uint32_t led_overflow_counter = 0;
 
 ISR(TIMER0_OVF_vect){
     uint8_t mask = 0b00000011;
-
+    uint8_t downB_mask = 0b11111111;
     //pause button
     pause_counter = ((pause_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
     if (pause_counter == mask){ pause_pressed = 1; } 
@@ -108,8 +109,8 @@ ISR(TIMER0_OVF_vect){
     if (upB_counter == mask){ upB_pressed = 1; } 
     else if (upB_counter == 0){ upB_pressed = 0; }
     //down joystick
-    downB_counter = ((downB_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
-    if (downB_counter == mask) { downB_pressed = 1; } 
+    downB_counter = ((downB_counter << 1) & downB_mask) | BIT_IS_SET(PINB, 7);
+    if (downB_counter == downB_mask) { downB_pressed = 1; } 
     else if (downB_counter == 0){ downB_pressed = 0; }
     //left switch
     switchL_counter = ((switchL_counter << 1) & mask) | BIT_IS_SET(PINF, 6);
@@ -146,10 +147,47 @@ const PROGMEM uint8_t block_image[4] = {
     0b11111111, 0b11000000  
 };
 
+const PROGMEM uint8_t food_image[3] = {
+    0b01000000,
+    0b11100000,
+    0b01000000,
+};
+
 uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000,
     0b10101010, 0b10100000
 };
+
+void init_food ( void ){
+    for (uint8_t i = 0; i < 5; i++){
+        // Initially store food off screen and in_visible
+        sprite_init(&Food[i], 0, LCD_Y + 5, 3, 3, load_rom_bitmap(food_image, 3));
+        Food[i].is_visible = false; 
+    }
+}
+
+void drop_food ( void ){
+    if (numFood > 0){
+        Food[numFood -1].x = player.x;
+        Food[numFood -1].y = player.y + 1;
+        Food[numFood -1].dx = Platforms[current_block].dx;
+        Food[numFood -1].is_visible = true;
+        numFood--;
+    }
+}
+
+void draw_food (){
+    for (uint8_t i = 0; i < 5; i++){
+        Food[i].x += Food[i].dx;
+        if (Food[i].x + 10 < 0){ // Screen LHS
+                Food[i].x = LCD_X - 1;
+            }
+        else if(Food[i].x > LCD_X - 1){ // Screen RHS
+            Food[i].x = 0 - 8;
+        }
+        sprite_draw(&Food[i]);
+    }
+}
 
 // Returns seconds past - code used from AMS Topic 9 ex 2
 double get_current_time (){
@@ -373,8 +411,6 @@ void screen_fade_up( uint16_t initBacklightValue, uint8_t contrast){
     }
 }
 
-
-
 void animate_death ( ){
     for (int i = 0; i < 7; i++){
         lcd_position(0, i);
@@ -403,6 +439,8 @@ void die ( void )
         player.x = playerSpawnX;
         player.y = 0;
         player.is_visible = 1;
+        init_food();
+        numFood = 5;
         show_screen();
         screen_fade_up( ADC_MAX, MY_LCD_CONTRAST );
     }
@@ -417,11 +455,11 @@ void die ( void )
 // Increases score only when player moves to or lands on a new safe block
 void increase_score(int new_block)
 {
-    if(old_block != new_block)
+    if(current_block != new_block)
     {
         Score++;
     }
-    old_block = new_block;
+    current_block = new_block;
 }
 
 // Checks collision between two sprites on a pixel level
@@ -635,6 +673,9 @@ void move_player(){
     else if (switchR_pressed){ // TODO move this to seperate function (?)
         treasureMove = !treasureMove;
     }
+    else if (downB_pressed && playerCollision){ // TODO better debounce
+        drop_food();
+    }
     /**
     else if ( pause_pressed != prevState ) {
 		prevState = pause_pressed;
@@ -708,15 +749,17 @@ void setup_game(){
     sprite_init( &player, playerSpawnX, 0, 5, 4, load_rom_bitmap(player_image, 4));
     sprite_draw( &player);
     sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, load_rom_bitmap(chest_image, 3));
-    
+    init_food();
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
 }
 
+// draw sprites in order of overlap - sprites draw last on top.
 void draw_all(){
-    sprite_draw(&player);
-    sprite_draw(&treasure);
     draw_platforms();
+    sprite_draw(&treasure);
+    sprite_draw(&player); 
+    draw_food();
     draw_line( 0, 0, 0, LCD_Y, FG_COLOUR);
     draw_line( LCD_X-1, 0, LCD_X-1, LCD_Y, FG_COLOUR );
 }
@@ -732,14 +775,17 @@ void game_pause_screen()
     char lives[15];
     char score[11];
     char counter[10]; 
+    char food[10];
 
     sprintf(lives, "%d lives left", LivesRemaining);
     sprintf(score, "Score: %d", Score);
+    sprintf(food, "Food: %d", numFood);
     sprintf(counter, "%02u:%02u", minutes, seconds);
-    uint8_t sy = 12;
+    uint8_t sy = 4;
     draw_string(10,sy, lives, FG_COLOUR);
     draw_string(20,sy+8, score, FG_COLOUR);
-    draw_string(28,sy+16, counter, FG_COLOUR);
+    draw_string(24,sy+16, food, FG_COLOUR);
+    draw_string(28,sy+24, counter, FG_COLOUR);
     show_screen();
     if (pause_pressed){
         _delay_ms(200);
