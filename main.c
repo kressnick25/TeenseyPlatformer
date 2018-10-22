@@ -16,6 +16,7 @@
 #include <avr/pgmspace.h>
 #include <math.h>
 #include <cab202_adc.h>
+#include "usb_serial.h" // SERIAL
 
 
 //TODO remove unused libraries
@@ -635,9 +636,17 @@ void chest_collide( void )
     }
 }
 
-void move_player(){
+bool check_serial (int character){
+    if ( usb_serial_available() ) {
+		int c = usb_serial_getchar();
+		if ( c == character ) return true;
+	}
+    return false;
+}
+
+void control_player(){
     // move right
-    if ( rightB_pressed && player.x < LCD_X - 5 && playerCollision)
+    if ( (rightB_pressed && player.x < LCD_X - 5 && playerCollision) || check_serial('d') )
     {   
         if (playerMovingLeft){
             playerMovingLeft = false;
@@ -647,7 +656,7 @@ void move_player(){
         }
     }
     //move left
-    else if (leftB_pressed && player.x > 0 && playerCollision)
+    else if ((leftB_pressed && player.x > 0 && playerCollision) || check_serial('a'))
     {
         if (playerMovingRight){
             playerMovingRight = false;
@@ -657,7 +666,7 @@ void move_player(){
         }
     }
     // jump
-    else if (upB_pressed && playerCollision)
+    else if ((upB_pressed && playerCollision) || check_serial('w'))
     {   
         playerJumping = true;
         player.y -= 5;
@@ -670,10 +679,10 @@ void move_player(){
         }
     }
     //right switch treasure
-    else if (switchR_pressed){ // TODO move this to seperate function (?)
+    else if (switchR_pressed || check_serial('t')){ // TODO move this to seperate function (?)
         treasureMove = !treasureMove;
     }
-    else if (downB_pressed && playerCollision){ // TODO better debounce
+    else if ((downB_pressed && playerCollision) || check_serial('s')){ // TODO better debounce
         drop_food();
     }
     /**
@@ -681,7 +690,7 @@ void move_player(){
 		prevState = pause_pressed;
 		gamePause = !gamePause;
 	}**/
-    else if (pause_pressed){
+    else if (pause_pressed || check_serial('p')){
         _delay_ms(200);
         gamePause = true;
     }
@@ -727,7 +736,7 @@ void setup_timers(){
     sei(); //Turn on interrupts. 
 }
 
-void setup_start(){
+void setup_main(){
     srand(100); //TODO proper timer seed.
     set_clock_speed(CPU_8MHz);
     lcd_init(MY_LCD_CONTRAST);
@@ -735,6 +744,7 @@ void setup_start(){
     adc_init(); //init pot1
     draw_string(8, 16, "Nicholas Kress", FG_COLOUR);
     draw_string(22, 24, "n9467688", FG_COLOUR);
+    usb_init(); // SERIAL
     show_screen();
     setup_timers();
 }
@@ -787,7 +797,7 @@ void game_pause_screen()
     draw_string(24,sy+16, food, FG_COLOUR);
     draw_string(28,sy+24, counter, FG_COLOUR);
     show_screen();
-    if (pause_pressed){
+    if (pause_pressed || check_serial('p')){
         _delay_ms(200);
         gamePause = false;
     }
@@ -809,19 +819,19 @@ void gameOverScreen()
     draw_string(20,sy+8, score, FG_COLOUR);
     draw_string(28,sy+16, counter, FG_COLOUR);
     show_screen();
-    if (switchR_pressed){
+    if (switchR_pressed || check_serial('r')){
         setup_game();
         gamePause = false;
         gameOver = false;
         
     }
-    if (switchL_pressed){
+    if (switchL_pressed || check_serial('q')){
         gameExit = true;
     }
 }
 
 int main ( void ){
-    setup_start();
+    setup_main();
     // Wait for player to press button
     while(1){
         if (BIT_VALUE(PINF, 6)){
@@ -829,6 +839,14 @@ int main ( void ){
             show_screen();
             break;
         }
+        if ( usb_serial_available() ) { //SERIAL
+            int c = usb_serial_getchar();
+            if ( c == 's'){
+                clear_screen();
+                show_screen();
+                break;
+            };
+	}
         _delay_ms(100);
     }
 
@@ -848,7 +866,7 @@ int main ( void ){
                 platforms_collide();
                 check_pot();
                 gravity();
-                move_player();
+                control_player();
                 if (treasureMove) sprite_step(&treasure);
                 sprite_step(&player);
                 chest_collide();
