@@ -1,0 +1,506 @@
+   1               		.file	"uart.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.uart_init,"ax",@progbits
+  11               	.global	uart_init
+  13               	uart_init:
+  14               	.LFB0:
+  15               		.file 1 "uart.c"
+   1:uart.c        **** /* UART Example for Teensy USB Development Board
+   2:uart.c        ****  * http://www.pjrc.com/teensy/
+   3:uart.c        ****  * Copyright (c) 2009 PJRC.COM, LLC
+   4:uart.c        ****  * 
+   5:uart.c        ****  * Permission is hereby granted, free of charge, to any person obtaining a copy
+   6:uart.c        ****  * of this software and associated documentation files (the "Software"), to deal
+   7:uart.c        ****  * in the Software without restriction, including without limitation the rights
+   8:uart.c        ****  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   9:uart.c        ****  * copies of the Software, and to permit persons to whom the Software is
+  10:uart.c        ****  * furnished to do so, subject to the following conditions:
+  11:uart.c        ****  * 
+  12:uart.c        ****  * The above copyright notice and this permission notice shall be included in
+  13:uart.c        ****  * all copies or substantial portions of the Software.
+  14:uart.c        ****  * 
+  15:uart.c        ****  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  16:uart.c        ****  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  17:uart.c        ****  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  18:uart.c        ****  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  19:uart.c        ****  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  20:uart.c        ****  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  21:uart.c        ****  * THE SOFTWARE.
+  22:uart.c        ****  */
+  23:uart.c        **** 
+  24:uart.c        **** // Version 1.0: Initial Release
+  25:uart.c        **** // Version 1.1: Add support for Teensy 2.0, minor optimizations
+  26:uart.c        **** 
+  27:uart.c        **** 
+  28:uart.c        **** #include <avr/io.h>
+  29:uart.c        **** #include <avr/interrupt.h>
+  30:uart.c        **** 
+  31:uart.c        **** #include "uart.h"
+  32:uart.c        **** 
+  33:uart.c        **** // These buffers may be any size from 2 to 256 bytes.
+  34:uart.c        **** #define RX_BUFFER_SIZE 64
+  35:uart.c        **** #define TX_BUFFER_SIZE 40
+  36:uart.c        **** 
+  37:uart.c        **** static volatile uint8_t tx_buffer[TX_BUFFER_SIZE];
+  38:uart.c        **** static volatile uint8_t tx_buffer_head;
+  39:uart.c        **** static volatile uint8_t tx_buffer_tail;
+  40:uart.c        **** static volatile uint8_t rx_buffer[RX_BUFFER_SIZE];
+  41:uart.c        **** static volatile uint8_t rx_buffer_head;
+  42:uart.c        **** static volatile uint8_t rx_buffer_tail;
+  43:uart.c        **** 
+  44:uart.c        **** // Initialize the UART
+  45:uart.c        **** void uart_init(uint32_t baud)
+  46:uart.c        **** {
+  16               		.loc 1 46 0
+  17               		.cfi_startproc
+  18               	.LVL0:
+  19               	/* prologue: function */
+  20               	/* frame size = 0 */
+  21               	/* stack size = 0 */
+  22               	.L__stack_usage = 0
+  23 0000 9B01      		movw r18,r22
+  24 0002 AC01      		movw r20,r24
+  47:uart.c        **** 	cli();
+  25               		.loc 1 47 0
+  26               	/* #APP */
+  27               	 ;  47 "uart.c" 1
+  28 0004 F894      		cli
+  29               	 ;  0 "" 2
+  48:uart.c        **** 	UBRR1 = (F_CPU / 4 / baud - 1) / 2;
+  30               		.loc 1 48 0
+  31               	/* #NOAPP */
+  32 0006 60E0      		ldi r22,0
+  33 0008 79E0      		ldi r23,lo8(9)
+  34 000a 8DE3      		ldi r24,lo8(61)
+  35 000c 90E0      		ldi r25,0
+  36               	.LVL1:
+  37 000e 0E94 0000 		call __udivmodsi4
+  38               	.LVL2:
+  39 0012 2150      		subi r18,1
+  40 0014 3109      		sbc r19,__zero_reg__
+  41 0016 4109      		sbc r20,__zero_reg__
+  42 0018 5109      		sbc r21,__zero_reg__
+  43 001a 5695      		lsr r21
+  44 001c 4795      		ror r20
+  45 001e 3795      		ror r19
+  46 0020 2795      		ror r18
+  47 0022 3093 CD00 		sts 204+1,r19
+  48 0026 2093 CC00 		sts 204,r18
+  49:uart.c        **** 	UCSR1A = (1<<U2X1);
+  49               		.loc 1 49 0
+  50 002a 82E0      		ldi r24,lo8(2)
+  51 002c 8093 C800 		sts 200,r24
+  50:uart.c        **** 	UCSR1B = (1<<RXEN1) | (1<<TXEN1) | (1<<RXCIE1);
+  52               		.loc 1 50 0
+  53 0030 88E9      		ldi r24,lo8(-104)
+  54 0032 8093 C900 		sts 201,r24
+  51:uart.c        **** 	UCSR1C = (1<<UCSZ11) | (1<<UCSZ10);
+  55               		.loc 1 51 0
+  56 0036 86E0      		ldi r24,lo8(6)
+  57 0038 8093 CA00 		sts 202,r24
+  52:uart.c        **** 	tx_buffer_head = tx_buffer_tail = 0;
+  58               		.loc 1 52 0
+  59 003c 1092 0000 		sts tx_buffer_tail,__zero_reg__
+  60 0040 1092 0000 		sts tx_buffer_head,__zero_reg__
+  53:uart.c        **** 	rx_buffer_head = rx_buffer_tail = 0;
+  61               		.loc 1 53 0
+  62 0044 1092 0000 		sts rx_buffer_tail,__zero_reg__
+  63 0048 1092 0000 		sts rx_buffer_head,__zero_reg__
+  54:uart.c        **** 	sei();
+  64               		.loc 1 54 0
+  65               	/* #APP */
+  66               	 ;  54 "uart.c" 1
+  67 004c 7894      		sei
+  68               	 ;  0 "" 2
+  69               	/* #NOAPP */
+  70 004e 0895      		ret
+  71               		.cfi_endproc
+  72               	.LFE0:
+  74               		.section	.text.uart_putchar,"ax",@progbits
+  75               	.global	uart_putchar
+  77               	uart_putchar:
+  78               	.LFB1:
+  55:uart.c        **** }
+  56:uart.c        **** 
+  57:uart.c        **** // Transmit a byte
+  58:uart.c        **** void uart_putchar(uint8_t c)
+  59:uart.c        **** {
+  79               		.loc 1 59 0
+  80               		.cfi_startproc
+  81               	.LVL3:
+  82               	/* prologue: function */
+  83               	/* frame size = 0 */
+  84               	/* stack size = 0 */
+  85               	.L__stack_usage = 0
+  60:uart.c        **** 	uint8_t i;
+  61:uart.c        **** 
+  62:uart.c        **** 	i = tx_buffer_head + 1;
+  86               		.loc 1 62 0
+  87 0000 9091 0000 		lds r25,tx_buffer_head
+  88 0004 9F5F      		subi r25,lo8(-(1))
+  89               	.LVL4:
+  63:uart.c        **** 	if (i >= TX_BUFFER_SIZE) i = 0;
+  90               		.loc 1 63 0
+  91 0006 9832      		cpi r25,lo8(40)
+  92 0008 00F0      		brlo .L5
+  93 000a 90E0      		ldi r25,0
+  94               	.LVL5:
+  95               	.L5:
+  64:uart.c        **** 	while (tx_buffer_tail == i) ; // wait until space in buffer
+  96               		.loc 1 64 0 discriminator 1
+  97 000c 2091 0000 		lds r18,tx_buffer_tail
+  98 0010 2917      		cp r18,r25
+  99 0012 01F0      		breq .L5
+  65:uart.c        **** 	//cli();
+  66:uart.c        **** 	tx_buffer[i] = c;
+ 100               		.loc 1 66 0
+ 101 0014 E92F      		mov r30,r25
+ 102 0016 F0E0      		ldi r31,0
+ 103 0018 E050      		subi r30,lo8(-(tx_buffer))
+ 104 001a F040      		sbci r31,hi8(-(tx_buffer))
+ 105 001c 8083      		st Z,r24
+  67:uart.c        **** 	tx_buffer_head = i;
+ 106               		.loc 1 67 0
+ 107 001e 9093 0000 		sts tx_buffer_head,r25
+  68:uart.c        **** 	UCSR1B = (1<<RXEN1) | (1<<TXEN1) | (1<<RXCIE1) | (1<<UDRIE1);
+ 108               		.loc 1 68 0
+ 109 0022 88EB      		ldi r24,lo8(-72)
+ 110               	.LVL6:
+ 111 0024 8093 C900 		sts 201,r24
+ 112 0028 0895      		ret
+ 113               		.cfi_endproc
+ 114               	.LFE1:
+ 116               		.section	.text.uart_getchar,"ax",@progbits
+ 117               	.global	uart_getchar
+ 119               	uart_getchar:
+ 120               	.LFB2:
+  69:uart.c        **** 	//sei();
+  70:uart.c        **** }
+  71:uart.c        **** 
+  72:uart.c        **** // Receive a byte
+  73:uart.c        **** uint8_t uart_getchar(void)
+  74:uart.c        **** {
+ 121               		.loc 1 74 0
+ 122               		.cfi_startproc
+ 123               	/* prologue: function */
+ 124               	/* frame size = 0 */
+ 125               	/* stack size = 0 */
+ 126               	.L__stack_usage = 0
+ 127               	.L10:
+  75:uart.c        ****         uint8_t c, i;
+  76:uart.c        **** 
+  77:uart.c        **** 	while (rx_buffer_head == rx_buffer_tail) ; // wait for character
+ 128               		.loc 1 77 0 discriminator 1
+ 129 0000 9091 0000 		lds r25,rx_buffer_head
+ 130 0004 8091 0000 		lds r24,rx_buffer_tail
+ 131 0008 9817      		cp r25,r24
+ 132 000a 01F0      		breq .L10
+  78:uart.c        ****         i = rx_buffer_tail + 1;
+ 133               		.loc 1 78 0
+ 134 000c 9091 0000 		lds r25,rx_buffer_tail
+ 135 0010 9F5F      		subi r25,lo8(-(1))
+ 136               	.LVL7:
+  79:uart.c        ****         if (i >= RX_BUFFER_SIZE) i = 0;
+ 137               		.loc 1 79 0
+ 138 0012 9034      		cpi r25,lo8(64)
+ 139 0014 00F0      		brlo .L11
+ 140 0016 90E0      		ldi r25,0
+ 141               	.LVL8:
+ 142               	.L11:
+  80:uart.c        ****         c = rx_buffer[i];
+ 143               		.loc 1 80 0
+ 144 0018 E92F      		mov r30,r25
+ 145 001a F0E0      		ldi r31,0
+ 146 001c E050      		subi r30,lo8(-(rx_buffer))
+ 147 001e F040      		sbci r31,hi8(-(rx_buffer))
+ 148 0020 8081      		ld r24,Z
+ 149               	.LVL9:
+  81:uart.c        ****         rx_buffer_tail = i;
+ 150               		.loc 1 81 0
+ 151 0022 9093 0000 		sts rx_buffer_tail,r25
+  82:uart.c        ****         return c;
+  83:uart.c        **** }
+ 152               		.loc 1 83 0
+ 153 0026 0895      		ret
+ 154               		.cfi_endproc
+ 155               	.LFE2:
+ 157               		.section	.text.uart_available,"ax",@progbits
+ 158               	.global	uart_available
+ 160               	uart_available:
+ 161               	.LFB3:
+  84:uart.c        **** 
+  85:uart.c        **** // Return the number of bytes waiting in the receive buffer.
+  86:uart.c        **** // Call this before uart_getchar() to check if it will need
+  87:uart.c        **** // to wait for a byte to arrive.
+  88:uart.c        **** uint8_t uart_available(void)
+  89:uart.c        **** {
+ 162               		.loc 1 89 0
+ 163               		.cfi_startproc
+ 164               	/* prologue: function */
+ 165               	/* frame size = 0 */
+ 166               	/* stack size = 0 */
+ 167               	.L__stack_usage = 0
+  90:uart.c        **** 	uint8_t head, tail;
+  91:uart.c        **** 
+  92:uart.c        **** 	head = rx_buffer_head;
+ 168               		.loc 1 92 0
+ 169 0000 8091 0000 		lds r24,rx_buffer_head
+ 170               	.LVL10:
+  93:uart.c        **** 	tail = rx_buffer_tail;
+ 171               		.loc 1 93 0
+ 172 0004 9091 0000 		lds r25,rx_buffer_tail
+ 173               	.LVL11:
+  94:uart.c        **** 	if (head >= tail) return head - tail;
+ 174               		.loc 1 94 0
+ 175 0008 8917      		cp r24,r25
+ 176 000a 00F4      		brsh .L16
+  95:uart.c        **** 	return RX_BUFFER_SIZE + head - tail;
+ 177               		.loc 1 95 0
+ 178 000c 805C      		subi r24,lo8(-(64))
+ 179               	.LVL12:
+ 180               	.L16:
+ 181 000e 891B      		sub r24,r25
+  96:uart.c        **** }
+ 182               		.loc 1 96 0
+ 183 0010 0895      		ret
+ 184               		.cfi_endproc
+ 185               	.LFE3:
+ 187               		.section	.text.__vector_26,"ax",@progbits
+ 188               	.global	__vector_26
+ 190               	__vector_26:
+ 191               	.LFB4:
+  97:uart.c        **** 
+  98:uart.c        **** // Transmit Interrupt
+  99:uart.c        **** ISR(USART1_UDRE_vect)
+ 100:uart.c        **** {
+ 192               		.loc 1 100 0
+ 193               		.cfi_startproc
+ 194 0000 1F92      		push r1
+ 195               	.LCFI0:
+ 196               		.cfi_def_cfa_offset 3
+ 197               		.cfi_offset 1, -2
+ 198 0002 0F92      		push r0
+ 199               	.LCFI1:
+ 200               		.cfi_def_cfa_offset 4
+ 201               		.cfi_offset 0, -3
+ 202 0004 0FB6      		in r0,__SREG__
+ 203 0006 0F92      		push r0
+ 204 0008 1124      		clr __zero_reg__
+ 205 000a 8F93      		push r24
+ 206               	.LCFI2:
+ 207               		.cfi_def_cfa_offset 5
+ 208               		.cfi_offset 24, -4
+ 209 000c 9F93      		push r25
+ 210               	.LCFI3:
+ 211               		.cfi_def_cfa_offset 6
+ 212               		.cfi_offset 25, -5
+ 213 000e EF93      		push r30
+ 214               	.LCFI4:
+ 215               		.cfi_def_cfa_offset 7
+ 216               		.cfi_offset 30, -6
+ 217 0010 FF93      		push r31
+ 218               	.LCFI5:
+ 219               		.cfi_def_cfa_offset 8
+ 220               		.cfi_offset 31, -7
+ 221               	/* prologue: Signal */
+ 222               	/* frame size = 0 */
+ 223               	/* stack size = 7 */
+ 224               	.L__stack_usage = 7
+ 101:uart.c        **** 	uint8_t i;
+ 102:uart.c        **** 
+ 103:uart.c        **** 	if (tx_buffer_head == tx_buffer_tail) {
+ 225               		.loc 1 103 0
+ 226 0012 9091 0000 		lds r25,tx_buffer_head
+ 227 0016 8091 0000 		lds r24,tx_buffer_tail
+ 228 001a 9813      		cpse r25,r24
+ 229 001c 00C0      		rjmp .L18
+ 104:uart.c        **** 		// buffer is empty, disable transmit interrupt
+ 105:uart.c        **** 		UCSR1B = (1<<RXEN1) | (1<<TXEN1) | (1<<RXCIE1);
+ 230               		.loc 1 105 0
+ 231 001e 88E9      		ldi r24,lo8(-104)
+ 232 0020 8093 C900 		sts 201,r24
+ 233 0024 00C0      		rjmp .L17
+ 234               	.L18:
+ 106:uart.c        **** 	} else {
+ 107:uart.c        **** 		i = tx_buffer_tail + 1;
+ 235               		.loc 1 107 0
+ 236 0026 8091 0000 		lds r24,tx_buffer_tail
+ 237 002a 8F5F      		subi r24,lo8(-(1))
+ 238               	.LVL13:
+ 108:uart.c        **** 		if (i >= TX_BUFFER_SIZE) i = 0;
+ 239               		.loc 1 108 0
+ 240 002c 8832      		cpi r24,lo8(40)
+ 241 002e 00F0      		brlo .L20
+ 242 0030 80E0      		ldi r24,0
+ 243               	.LVL14:
+ 244               	.L20:
+ 109:uart.c        **** 		UDR1 = tx_buffer[i];
+ 245               		.loc 1 109 0
+ 246 0032 E82F      		mov r30,r24
+ 247 0034 F0E0      		ldi r31,0
+ 248 0036 E050      		subi r30,lo8(-(tx_buffer))
+ 249 0038 F040      		sbci r31,hi8(-(tx_buffer))
+ 250 003a 9081      		ld r25,Z
+ 251 003c 9093 CE00 		sts 206,r25
+ 110:uart.c        **** 		tx_buffer_tail = i;
+ 252               		.loc 1 110 0
+ 253 0040 8093 0000 		sts tx_buffer_tail,r24
+ 254               	.LVL15:
+ 255               	.L17:
+ 256               	/* epilogue start */
+ 111:uart.c        **** 	}
+ 112:uart.c        **** }
+ 257               		.loc 1 112 0
+ 258 0044 FF91      		pop r31
+ 259 0046 EF91      		pop r30
+ 260 0048 9F91      		pop r25
+ 261 004a 8F91      		pop r24
+ 262 004c 0F90      		pop r0
+ 263 004e 0FBE      		out __SREG__,r0
+ 264 0050 0F90      		pop r0
+ 265 0052 1F90      		pop r1
+ 266 0054 1895      		reti
+ 267               		.cfi_endproc
+ 268               	.LFE4:
+ 270               		.section	.text.__vector_25,"ax",@progbits
+ 271               	.global	__vector_25
+ 273               	__vector_25:
+ 274               	.LFB5:
+ 113:uart.c        **** 
+ 114:uart.c        **** // Receive Interrupt
+ 115:uart.c        **** ISR(USART1_RX_vect)
+ 116:uart.c        **** {
+ 275               		.loc 1 116 0
+ 276               		.cfi_startproc
+ 277 0000 1F92      		push r1
+ 278               	.LCFI6:
+ 279               		.cfi_def_cfa_offset 3
+ 280               		.cfi_offset 1, -2
+ 281 0002 0F92      		push r0
+ 282               	.LCFI7:
+ 283               		.cfi_def_cfa_offset 4
+ 284               		.cfi_offset 0, -3
+ 285 0004 0FB6      		in r0,__SREG__
+ 286 0006 0F92      		push r0
+ 287 0008 1124      		clr __zero_reg__
+ 288 000a 2F93      		push r18
+ 289               	.LCFI8:
+ 290               		.cfi_def_cfa_offset 5
+ 291               		.cfi_offset 18, -4
+ 292 000c 8F93      		push r24
+ 293               	.LCFI9:
+ 294               		.cfi_def_cfa_offset 6
+ 295               		.cfi_offset 24, -5
+ 296 000e 9F93      		push r25
+ 297               	.LCFI10:
+ 298               		.cfi_def_cfa_offset 7
+ 299               		.cfi_offset 25, -6
+ 300 0010 EF93      		push r30
+ 301               	.LCFI11:
+ 302               		.cfi_def_cfa_offset 8
+ 303               		.cfi_offset 30, -7
+ 304 0012 FF93      		push r31
+ 305               	.LCFI12:
+ 306               		.cfi_def_cfa_offset 9
+ 307               		.cfi_offset 31, -8
+ 308               	/* prologue: Signal */
+ 309               	/* frame size = 0 */
+ 310               	/* stack size = 8 */
+ 311               	.L__stack_usage = 8
+ 117:uart.c        **** 	uint8_t c, i;
+ 118:uart.c        **** 
+ 119:uart.c        **** 	c = UDR1;
+ 312               		.loc 1 119 0
+ 313 0014 9091 CE00 		lds r25,206
+ 314               	.LVL16:
+ 120:uart.c        **** 	i = rx_buffer_head + 1;
+ 315               		.loc 1 120 0
+ 316 0018 8091 0000 		lds r24,rx_buffer_head
+ 317 001c 8F5F      		subi r24,lo8(-(1))
+ 318               	.LVL17:
+ 121:uart.c        **** 	if (i >= RX_BUFFER_SIZE) i = 0;
+ 319               		.loc 1 121 0
+ 320 001e 8034      		cpi r24,lo8(64)
+ 321 0020 00F0      		brlo .L23
+ 322 0022 80E0      		ldi r24,0
+ 323               	.LVL18:
+ 324               	.L23:
+ 122:uart.c        **** 	if (i != rx_buffer_tail) {
+ 325               		.loc 1 122 0
+ 326 0024 2091 0000 		lds r18,rx_buffer_tail
+ 327 0028 8217      		cp r24,r18
+ 328 002a 01F0      		breq .L22
+ 123:uart.c        **** 		rx_buffer[i] = c;
+ 329               		.loc 1 123 0
+ 330 002c E82F      		mov r30,r24
+ 331 002e F0E0      		ldi r31,0
+ 332 0030 E050      		subi r30,lo8(-(rx_buffer))
+ 333 0032 F040      		sbci r31,hi8(-(rx_buffer))
+ 334 0034 9083      		st Z,r25
+ 124:uart.c        **** 		rx_buffer_head = i;
+ 335               		.loc 1 124 0
+ 336 0036 8093 0000 		sts rx_buffer_head,r24
+ 337               	.L22:
+ 338               	/* epilogue start */
+ 125:uart.c        **** 	}
+ 126:uart.c        **** }
+ 339               		.loc 1 126 0
+ 340 003a FF91      		pop r31
+ 341 003c EF91      		pop r30
+ 342 003e 9F91      		pop r25
+ 343               	.LVL19:
+ 344 0040 8F91      		pop r24
+ 345               	.LVL20:
+ 346 0042 2F91      		pop r18
+ 347 0044 0F90      		pop r0
+ 348 0046 0FBE      		out __SREG__,r0
+ 349 0048 0F90      		pop r0
+ 350 004a 1F90      		pop r1
+ 351 004c 1895      		reti
+ 352               		.cfi_endproc
+ 353               	.LFE5:
+ 355               		.local	rx_buffer_tail
+ 356               		.comm	rx_buffer_tail,1,1
+ 357               		.local	rx_buffer_head
+ 358               		.comm	rx_buffer_head,1,1
+ 359               		.local	rx_buffer
+ 360               		.comm	rx_buffer,64,1
+ 361               		.local	tx_buffer_tail
+ 362               		.comm	tx_buffer_tail,1,1
+ 363               		.local	tx_buffer_head
+ 364               		.comm	tx_buffer_head,1,1
+ 365               		.local	tx_buffer
+ 366               		.comm	tx_buffer,40,1
+ 367               		.text
+ 368               	.Letext0:
+ 369               		.file 2 "/usr/local/CrossPack-AVR-20131216/avr/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 uart.c
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:2      *ABS*:0000003e __SP_H__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:3      *ABS*:0000003d __SP_L__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:4      *ABS*:0000003f __SREG__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:5      *ABS*:00000000 __tmp_reg__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:6      *ABS*:00000001 __zero_reg__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:13     .text.uart_init:00000000 uart_init
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:360    .bss:00000042 tx_buffer_tail
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:362    .bss:00000043 tx_buffer_head
+                             .bss:00000000 rx_buffer_tail
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:356    .bss:00000001 rx_buffer_head
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:77     .text.uart_putchar:00000000 uart_putchar
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:364    .bss:00000044 tx_buffer
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:119    .text.uart_getchar:00000000 uart_getchar
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:358    .bss:00000002 rx_buffer
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:160    .text.uart_available:00000000 uart_available
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:190    .text.__vector_26:00000000 __vector_26
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccBnR9Ww.s:273    .text.__vector_25:00000000 __vector_25
+
+UNDEFINED SYMBOLS
+__udivmodsi4
+__do_clear_bss

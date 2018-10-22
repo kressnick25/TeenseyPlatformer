@@ -1,0 +1,189 @@
+   1               		.file	"example.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.uart_print_P,"ax",@progbits
+  11               	.global	uart_print_P
+  13               	uart_print_P:
+  14               	.LFB1:
+  15               		.file 1 "example.c"
+   1:example.c     **** #include <avr/io.h>
+   2:example.c     **** #include <avr/pgmspace.h>
+   3:example.c     **** #include <stdint.h>
+   4:example.c     **** #include "uart.h"
+   5:example.c     **** 
+   6:example.c     **** #define BAUD_RATE 38400
+   7:example.c     **** 
+   8:example.c     **** #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
+   9:example.c     **** 
+  10:example.c     **** // write a string to the uart
+  11:example.c     **** #define uart_print(s) uart_print_P(PSTR(s))
+  12:example.c     **** void uart_print_P(const char *str)
+  13:example.c     **** {
+  16               		.loc 1 13 0
+  17               		.cfi_startproc
+  18               	.LVL0:
+  19 0000 CF93      		push r28
+  20               	.LCFI0:
+  21               		.cfi_def_cfa_offset 3
+  22               		.cfi_offset 28, -2
+  23 0002 DF93      		push r29
+  24               	.LCFI1:
+  25               		.cfi_def_cfa_offset 4
+  26               		.cfi_offset 29, -3
+  27               	/* prologue: function */
+  28               	/* frame size = 0 */
+  29               	/* stack size = 2 */
+  30               	.L__stack_usage = 2
+  31 0004 FC01      		movw r30,r24
+  32               	.LVL1:
+  33               	.L3:
+  34               	.LBB2:
+  14:example.c     **** 	char c;
+  15:example.c     **** 	while (1) {
+  16:example.c     **** 		c = pgm_read_byte(str++);
+  35               		.loc 1 16 0
+  36               	/* #APP */
+  37               	 ;  16 "example.c" 1
+  38 0006 8491      		lpm r24, Z
+  39               		
+  40               	 ;  0 "" 2
+  41               	.LVL2:
+  42               	/* #NOAPP */
+  43 0008 EF01      		movw r28,r30
+  44 000a 2196      		adiw r28,1
+  45               	.LVL3:
+  46               	.LBE2:
+  17:example.c     **** 		if (!c) break;
+  47               		.loc 1 17 0
+  48 000c 8823      		tst r24
+  49 000e 01F0      		breq .L1
+  18:example.c     **** 		uart_putchar(c);
+  50               		.loc 1 18 0
+  51 0010 0E94 0000 		call uart_putchar
+  52               	.LVL4:
+  53 0014 FE01      		movw r30,r28
+  19:example.c     **** 	}
+  54               		.loc 1 19 0
+  55 0016 00C0      		rjmp .L3
+  56               	.LVL5:
+  57               	.L1:
+  58               	/* epilogue start */
+  20:example.c     **** }
+  59               		.loc 1 20 0
+  60 0018 DF91      		pop r29
+  61 001a CF91      		pop r28
+  62               	.LVL6:
+  63 001c 0895      		ret
+  64               		.cfi_endproc
+  65               	.LFE1:
+  67               		.section	.text.startup.main,"ax",@progbits
+  68               	.global	main
+  70               	main:
+  71               	.LFB2:
+  21:example.c     **** 
+  22:example.c     **** // A very basic example...
+  23:example.c     **** // when the user types a character, print it back
+  24:example.c     **** int main(void)
+  25:example.c     **** {
+  72               		.loc 1 25 0
+  73               		.cfi_startproc
+  74               	/* prologue: function */
+  75               	/* frame size = 0 */
+  76               	/* stack size = 0 */
+  77               	.L__stack_usage = 0
+  26:example.c     **** 	uint8_t c;
+  27:example.c     **** 
+  28:example.c     **** 	CPU_PRESCALE(0);  // run at 16 MHz
+  78               		.loc 1 28 0
+  79 0000 80E8      		ldi r24,lo8(-128)
+  80 0002 8093 6100 		sts 97,r24
+  81 0006 1092 6100 		sts 97,__zero_reg__
+  29:example.c     **** 	uart_init(BAUD_RATE);
+  82               		.loc 1 29 0
+  83 000a 60E0      		ldi r22,0
+  84 000c 76E9      		ldi r23,lo8(-106)
+  85 000e 80E0      		ldi r24,0
+  86 0010 90E0      		ldi r25,0
+  87 0012 0E94 0000 		call uart_init
+  88               	.LVL7:
+  30:example.c     **** 	uart_print("UART Example\r\n");
+  89               		.loc 1 30 0
+  90 0016 80E0      		ldi r24,lo8(__c.1644)
+  91 0018 90E0      		ldi r25,hi8(__c.1644)
+  92 001a 0E94 0000 		call uart_print_P
+  93               	.LVL8:
+  94               	.L7:
+  31:example.c     **** 	while (1) {
+  32:example.c     **** 		if (uart_available()) {
+  95               		.loc 1 32 0
+  96 001e 0E94 0000 		call uart_available
+  97               	.LVL9:
+  98 0022 8823      		tst r24
+  99 0024 01F0      		breq .L7
+  33:example.c     **** 			c = uart_getchar();
+ 100               		.loc 1 33 0
+ 101 0026 0E94 0000 		call uart_getchar
+ 102               	.LVL10:
+ 103 002a C82F      		mov r28,r24
+ 104               	.LVL11:
+  34:example.c     **** 			uart_print("Byte: ");
+ 105               		.loc 1 34 0
+ 106 002c 80E0      		ldi r24,lo8(__c.1646)
+ 107 002e 90E0      		ldi r25,hi8(__c.1646)
+ 108               	.LVL12:
+ 109 0030 0E94 0000 		call uart_print_P
+ 110               	.LVL13:
+  35:example.c     **** 			uart_putchar(c);
+ 111               		.loc 1 35 0
+ 112 0034 8C2F      		mov r24,r28
+ 113 0036 0E94 0000 		call uart_putchar
+ 114               	.LVL14:
+  36:example.c     **** 			uart_putchar('\r');
+ 115               		.loc 1 36 0
+ 116 003a 8DE0      		ldi r24,lo8(13)
+ 117 003c 0E94 0000 		call uart_putchar
+ 118               	.LVL15:
+  37:example.c     **** 			uart_putchar('\n');
+ 119               		.loc 1 37 0
+ 120 0040 8AE0      		ldi r24,lo8(10)
+ 121 0042 0E94 0000 		call uart_putchar
+ 122               	.LVL16:
+ 123 0046 00C0      		rjmp .L7
+ 124               		.cfi_endproc
+ 125               	.LFE2:
+ 127               		.section	.progmem.data,"a",@progbits
+ 130               	__c.1646:
+ 131 0000 4279 7465 		.string	"Byte: "
+ 131      3A20 00
+ 134               	__c.1644:
+ 135 0007 5541 5254 		.string	"UART Example\r\n"
+ 135      2045 7861 
+ 135      6D70 6C65 
+ 135      0D0A 00
+ 136               		.text
+ 137               	.Letext0:
+ 138               		.file 2 "/usr/local/CrossPack-AVR-20131216/avr/include/stdint.h"
+ 139               		.file 3 "uart.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 example.c
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:2      *ABS*:0000003e __SP_H__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:3      *ABS*:0000003d __SP_L__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:4      *ABS*:0000003f __SREG__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:5      *ABS*:00000000 __tmp_reg__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:6      *ABS*:00000001 __zero_reg__
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:13     .text.uart_print_P:00000000 uart_print_P
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:70     .text.startup.main:00000000 main
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:134    .progmem.data:00000007 __c.1644
+/var/folders/mb/2nmmt9jn6d7859h4_zzgbjyhjc_pkl/T//ccuU7QJt.s:130    .progmem.data:00000000 __c.1646
+
+UNDEFINED SYMBOLS
+uart_putchar
+uart_init
+uart_available
+uart_getchar

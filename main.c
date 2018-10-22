@@ -15,9 +15,12 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <math.h>
+#include <cab202_adc.h>
+
 
 //TODO remove unused libraries
 //TODO convert int to uint8_t where appropriate.
+// TODO put any const in progmem
 
 #define MY_LCD_CONTRAST 0x44
 
@@ -49,6 +52,7 @@ uint8_t old_block;
 uint8_t Score = 0;
 uint8_t LivesRemaining;
 uint16_t secondsPast; 
+uint8_t numFood = 5;
 
 //DEBUGGING
 bool starting_platform = false;
@@ -58,7 +62,7 @@ bool starting_platform = false;
 Sprite treasure;
 Sprite player;
 Sprite startingBlock;
-Sprite Platforms[sizeOfPlatforms]; //TODO will storing in progmem affect performance
+Sprite Platforms[sizeOfPlatforms];
 Sprite Zombies[5]; // for all zombies if zombie.dy = 0; stop flashing
 
 //debounce //TODO put in array
@@ -170,48 +174,6 @@ void sprite_step( sprite_id sprite){
     sprite->y += sprite->dy;
 }
 
-/*
-**	Initialize and enable ADC with pre-scaler 128.
-**
-**	Assuming CPU speed is 8MHz, sets the ADC clock to a frequency of
-**	8000000/128 = 62500Hz. Normal conversion takes 13 ADC clock cycles,
-**	or 0.000208 seconds. The first conversion will be slower, due to
-**	need to initialise ADC circuit.
-*/
-void adc_init() {
-	// ADC Enable and pre-scaler of 128: ref table 24-5 in datasheet
-	ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
-}
-
-/*
-**	Do single conversion to read value of designated ADC pin combination.
-**
-**	Input:
-**	channel - A 6-bit value which specifies the ADC input channel and gain
-**			  selection. Refer table 24-4 in datasheet.
-**
-**	On TeensyPewPew, channel should be 0, 1, or 4.
-**	0 = Pot0
-**	1 = Pot1
-**	4 = Broken-out Pin F4.
-*/
-uint16_t adc_read(uint8_t channel) {
-	// Select AVcc voltage reference and pin combination.
-	// Low 5 bits of channel spec go in ADMUX(MUX4:0)
-	// 5th bit of channel spec goes in ADCSRB(MUX5).
-	ADMUX = (channel & ((1 << 5) - 1)) | (1 << REFS0);
-	ADCSRB = (channel & (1 << 5));
-
-	// Start single conversion by setting ADSC bit in ADCSRA
-	ADCSRA |= (1 << ADSC);
-
-	// Wait for ADSC bit to clear, signalling conversion complete.
-	while ( ADCSRA & (1 << ADSC) ) {}
-
-	// Result now available.
-	return ADC;
-}
-
 // Returns a random double floating point number between two values
 double rand_number(double min, double max)
 { 
@@ -302,7 +264,7 @@ void auto_move_platforms( void )
     }
 }
 
-void change_platform_speed( float speed ) //TODO fix platforms reversing
+void change_platform_speed( float speed )
 {
     int c = 0;
     for (int i = 0; i < 4; i++){
@@ -385,33 +347,34 @@ void backlight_pwm(int duty_cycle){
 
 // cycle contrast and led to 0 with PWM
 void screen_fade_down( uint16_t initBacklightValue, uint8_t contrast ){
-    float c = 0.75;
-    float b = 0.9;
-    for (uint8_t i = 0; i < 4; i++){
-        if (i == 3){ b = 0, c = 0; }
+    float c = 0.8;
+    float b = 1.0;
+    for (uint8_t i = 0; i < 8; i++){
+        if (i == 8){ b = 0, c = 0; }
         backlight_pwm(initBacklightValue * c);
         lcd_init(contrast * b);
-        _delay_ms(300);
-        c -= 0.25;
-        b -= 0.1;
+        _delay_ms(100);
+        c -= 0.1;
+        b -= 0.05;
     }
 }
 
 // cycle contrast and led up to MAX with PWM
 void screen_fade_up( uint16_t initBacklightValue, uint8_t contrast){
-    float c = 0.25;
-    float b = 0.7;
-    for (uint8_t i = 0; i < 4; i++){
+    float c = 0.0;
+    float b = 0.6;
+    for (uint8_t i = 0; i < 8; i++){
+        if (i == 7) { c = 1, b = 1; }
         backlight_pwm(initBacklightValue * c);
         lcd_init(contrast * b);
-        _delay_ms(300);
-        c += 0.25;
-        b += 0.1;
+        _delay_ms(100);
+        c += 0.1;
+        b += 0.05;
     }
 }
 
 
-//TODO get help
+
 void animate_death ( ){
     for (int i = 0; i < 7; i++){
         lcd_position(0, i);
@@ -426,8 +389,6 @@ void animate_death ( ){
 // Pauses the game momentarily, resets player to safe block in starting row
 void die ( void )
 {   
-    //timer_pause(1000); //TODO
-    //_delay_ms(1000);
     LivesRemaining--;
     if (LivesRemaining != 0){
         screen_fade_down( ADC_MAX, MY_LCD_CONTRAST );
@@ -731,7 +692,6 @@ void setup_start(){
     lcd_init(MY_LCD_CONTRAST);
     init_buttons();
     adc_init(); //init pot1
-    // TODO change this to ascii per asci_font.h
     draw_string(8, 16, "Nicholas Kress", FG_COLOUR);
     draw_string(22, 24, "n9467688", FG_COLOUR);
     show_screen();
@@ -742,7 +702,6 @@ void setup_game(){
     LivesRemaining = 10;
     Score = 0;
     time_overflow_counter = 0;
-    //TODO time = 0
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
@@ -846,13 +805,13 @@ int main ( void ){
                 move_player();
                 if (treasureMove) sprite_step(&treasure);
                 sprite_step(&player);
-                chest_collide(); //TODO not working
+                chest_collide();
                 auto_move_platforms();
                 auto_move_treasure();
                 draw_all();
                 //DEBUG
                 secondsPast = get_current_time();
-                get_led_flash();
+                //get_led_flash(); //TODO renable
                 show_screen();
                 _delay_ms(0); // TODO actual interupt service.
             }

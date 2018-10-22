@@ -9,7 +9,19 @@ TARGETS = main.hex
 
 # Set the name of the folder containing libcab202_teensy.a
 
-CAB202_TEENSY_FOLDER = ./cab202_teensy 
+CAB202_TEENSY_FOLDER = ./lib/cab202_teensy 
+
+USB_SERIAL_FOLDER = ./lib/usb_serial
+
+USB_SERIAL_OBJ = ./lib/usb_serial/usb_serial.o
+
+UART_FOLDER = ./lib/uart
+
+UART_OBJ= ./lib/uart/uart.o
+
+ADC_FOLDER = ./lib/cab202_adc
+
+ADC_OBJ = ./lib/cab202_adc/cab202_adc.o
 
 # ---------------------------------------------------------------------------
 #	Leave the rest of the file alone.
@@ -17,8 +29,8 @@ CAB202_TEENSY_FOLDER = ./cab202_teensy
 
 all: $(TARGETS)
 
-TEENSY_LIBS = -lcab202_teensy -lprintf_flt -lm 
-TEENSY_DIRS =-I$(CAB202_TEENSY_FOLDER) -L$(CAB202_TEENSY_FOLDER)
+TEENSY_LIBS = $(USB_SERIAL_OBJ) $(ADC_OBJ) -lcab202_teensy -lprintf_flt -lm 
+TEENSY_DIRS =-I$(CAB202_TEENSY_FOLDER) -L$(CAB202_TEENSY_FOLDER) -I$(USB_SERIAL_FOLDER) -I$(ADC_FOLDER)
 TEENSY_FLAGS = \
 	-std=gnu99 \
 	-mmcu=atmega32u4 \
