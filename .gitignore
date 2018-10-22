@@ -2,3 +2,6 @@
 *.json
 *.hex
 *.hex.obj
+*.png
+*.zip
+screenlog.0

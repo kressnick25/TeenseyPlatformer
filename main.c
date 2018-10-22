@@ -431,12 +431,60 @@ void animate_death ( ){
     }
 }
 
+//TODO do this for all serial comms
+const unsigned char serialGameStart[50] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
+
+void serial_comms ( uint8_t event, char* death_type ){
+    char output[150];
+    uint8_t minutes = (secondsPast /60) % 60;
+    uint8_t seconds = secondsPast % 60;
+    if (event == 1){ // Game Start
+        sprintf(output, (char*)load_rom_string(serialGameStart), player.x, player.y);
+    }
+    else if (event == 2){ // Player Death
+        sprintf(output, "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n", 
+                                                death_type, LivesRemaining, Score, minutes, seconds);
+    }
+    else if (event == 3){ //Player Respawn
+        sprintf(output, "Respawn - player position: %.0f, %.0f\r\n", player.x, player.y);
+    }
+    else if (event == 4){ // Zombies Appear
+        //TODO zombies appear
+        sprintf(output, "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n", 5, minutes, seconds, LivesRemaining, Score );
+    }
+    else if (event == 5){ //Zombie eats food
+        // TODO num zombies
+        sprintf(output, "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n", 5, numFood, minutes, seconds);
+    }
+    else if (event == 6){ //Chest Collide
+        sprintf(output, "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n", Score, LivesRemaining, minutes, seconds, player.x, player.y);
+    }
+    else if (event == 7){ // Pause Button
+        //TODO num_Zombies
+        sprintf(output, "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n", LivesRemaining, Score, minutes, seconds, 5, numFood);
+    }
+    else if (event == 8){ //Game Over
+        //TODO zombies fed
+        sprintf(output, "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n", Score, minutes, seconds, 0);
+    }
+    
+    usb_serial_send(output);
+
+}
+
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
-void die ( void )
+// TODO choose safe block
+void die ( char * death_type )
 {   
     LivesRemaining--;
     if (LivesRemaining != 0){
+        if (strcmp(death_type, "chest_collide") != 0){
+            serial_comms(2, death_type);
+        }
+        else{
+            serial_comms(6, NULL);
+        }
         screen_fade_down( ADC_MAX, MY_LCD_CONTRAST );
         player.is_visible = 0;
         //create_platforms(); //TODO
@@ -453,6 +501,7 @@ void die ( void )
         numFood = 5;
         show_screen();
         screen_fade_up( ADC_MAX, MY_LCD_CONTRAST );
+        serial_comms(3, NULL);
     }
     
     if (LivesRemaining == 0)
@@ -543,7 +592,7 @@ bool platforms_collide( void )
             if (collide)
             {
                 if(Platforms[i].bitmap == bad_image){
-                    die();
+                    die("bad_platform");
                     output = true;
                     break;
                 }
@@ -551,7 +600,7 @@ bool platforms_collide( void )
                 {   // Die if any part of current block is off screen
                     if(Platforms[i].x > LCD_X - Platforms[i].width ||
                         Platforms[i].x < 0){
-                        die();
+                        die("block_off_screen");
                     }
                     // Update player speed so that player moves with platform on
                     update_player_speed(i);
@@ -578,7 +627,7 @@ void check_out_of_bounds( void )
         player.x + player.width < 0 || 
         player.x > LCD_X)
         {
-        die();
+        die("player_off_screen");
     }     
 }
 
@@ -642,7 +691,7 @@ void chest_collide( void )
     if (collide){
         treasure.x = LCD_X + 6;
         LivesRemaining += 3;
-        die();
+        die("chest_collide");
     }
 }
 
@@ -701,6 +750,7 @@ void control_player(){
 		gamePause = !gamePause;
 	}**/
     else if (pause_pressed){
+        serial_comms(7, NULL);
         _delay_ms(200);
         gamePause = true;
     }
@@ -741,6 +791,7 @@ void control_player(){
             drop_food();
         }
         else if ( c == 'p'){
+            serial_comms(7, NULL);
             _delay_ms(200);
             gamePause = true;
         }
@@ -813,10 +864,7 @@ void setup_game(){
     init_food();
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
-    // SERIAL
-    char gameStart[50];
-    sprintf(gameStart, "Game Start: player at positon %.0f , %.0f", player.x, player.y);
-    usb_serial_send(gameStart);
+    serial_comms(1, NULL);
 }
 
 // draw sprites in order of overlap - sprites draw last on top.
@@ -832,6 +880,7 @@ void draw_all(){
 void game_pause_screen()
 {
     if (LivesRemaining == 0){
+        serial_comms(8, NULL);
         gameOver = true;
     }
     clear_screen();
