@@ -303,31 +303,14 @@ void drop_zombies(){
     }
 }
 
-bool check_for_pixel(uint8_t sprite_x, uint8_t sprite_y, bool right){
-      // Do nothing if requested pixel is out of bounds. 
-	if ( sprite_x < 0 || sprite_y < 0 || sprite_x >= LCD_X || sprite_y >= LCD_Y ) {
-		return false;
-	}
-    uint8_t c = -3;
-    if (right) { c = 5; }
-    int px = sprite_x + c;
-    int py = sprite_y + 3;
+void zombie_eat(){
 
-	uint8_t bank = py >> 3;
-	uint8_t pixel = py & 7;
-
-    if (BIT_IS_SET(screen_buffer[bank*LCD_X + px], pixel)){
-	    return true;
-    }
-    return false;
 }
-
-
 
 void zombie_movement(){
     for (uint8_t i = 0; i < 5; i++){ // Gravity
         int plat = get_current_platform(Zombies[i]);
-
+        zombie_eat();
         // do not check once zombie is on block
         if (Zombies[i].dy != 0){
             if (plat != -1){
@@ -356,16 +339,16 @@ void zombie_movement(){
             Zombies[i].x = 0 - 8;
         }
         
-        if (Zombies[i].dy == 0){
+        if (Zombies[i].dy == 0 && Zombies[i].x > 0 && Zombies[i].x < LCD_X - 1){
             int offset = 0;
             double cdx = Zombies[i].dx;
             if (cdx < 0) { offset = -2; }
             else if ( cdx > 0){ offset = 2; }
 
             Zombies[i].x += offset; //for fall test
-            plat = get_current_platform(Zombies[i]);
+            int plat2 = get_current_platform(Zombies[i]);
             Zombies[i].x -= offset; //reset x
-            if (plat == - 1){
+            if (plat2 == - 1){
                 cdx = -cdx;
             }
             if (cdx != Zombies[i].dx ){
