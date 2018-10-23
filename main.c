@@ -322,46 +322,58 @@ bool check_for_pixel(uint8_t sprite_x, uint8_t sprite_y, bool right){
     return false;
 }
 
+
+
 void zombie_movement(){
     for (uint8_t i = 0; i < 5; i++){ // Gravity
-        // do not check once zombie is on block - save processing.
-        if (Zombies[i].dy != 0 || Zombies[i].y > LCD_Y){
-            for (uint8_t j = 0; j < sizeOfPlatforms; j++){
-                if (sprites_collide(Zombies[i], Platforms[j], 1)){
-                    Zombies[i].dy = 0;
-                    Zombies[i].dx = Platforms[j].dx * ZOMBIE_SPEED;
+        int plat = get_current_platform(Zombies[i]);
+
+        // do not check once zombie is on block
+        if (Zombies[i].dy != 0){
+            if (plat != -1){
+                Zombies[i].dy = 0;
+                if (Platforms[plat].dx == 0){
+                    Zombies[i].dx = 0.3;
                 }
+                else{
+                    Zombies[i].dx = Platforms[plat].dx * ZOMBIE_SPEED;
+                }
+                /**
+                else if (Platforms[plat].dx > 0){
+                    Zombies[i].dx = Platforms[plat].dx + 0.2; 
+                }
+                else if (Platforms[plat].dx < 0){
+                    Zombies[i].dx = Platforms[plat].dx - 0.2;
+                }**/
             }
         }
-        // teleport
+
+        // loop to opposite side of screen
         if (Zombies[i].x + 10 < 0){ // Screen LHS
                 Zombies[i].x = LCD_X - 1;
             }
         else if(Zombies[i].x > LCD_X - 1){ // Screen RHS
             Zombies[i].x = 0 - 8;
         }
-
-        //roaming
+        
         if (Zombies[i].dy == 0){
-            
+            int offset = 0;
             double cdx = Zombies[i].dx;
-            if (cdx < 0){
-                if (!check_for_pixel(Zombies[i].x, Zombies[i].y, false)){
-                    cdx = -cdx;
-                }
-            }
-            else if (cdx > 0){
-                if (!check_for_pixel(Zombies[i].x, Zombies[i].y, true)){
-                    cdx = -cdx;
-                }
-            }
+            if (cdx < 0) { offset = -2; }
+            else if ( cdx > 0){ offset = 2; }
 
-            if ( cdx != Zombies[i].dx){
+            Zombies[i].x += offset; //for fall test
+            plat = get_current_platform(Zombies[i]);
+            Zombies[i].x -= offset; //reset x
+            if (plat == - 1){
+                cdx = -cdx;
+            }
+            if (cdx != Zombies[i].dx ){
                 Zombies[i].x -= Zombies[i].dx;
-                Zombies[i].dx = cdx;        
+                Zombies[i].dx = cdx;
             }
-
         }
+
     }
 }
 
@@ -503,14 +515,8 @@ void change_platform_speed( float speed )
         }
         speed = -speed;
     }
-    // adjust zombie speed as well
-    for (uint8_t k = 0; k < 5; k++){
-        if (Zombies[k].dx > 0 || Zombies[k].dx == 0){
-            Zombies[k].dx = 0.05 * speed * ZOMBIE_SPEED;
-        }
-        else if (Zombies[k].dx < 0){
-            Zombies[k].dx = 0.05 * -speed * ZOMBIE_SPEED;
-        }
+    for (int j = 0; j < 5; j++){
+        Zombies[j].dx = Platforms[get_current_platform(Zombies[j])].dx * ZOMBIE_SPEED;
     }
     update_food_speed();
 }
