@@ -54,7 +54,7 @@ uint8_t current_block;
 uint8_t Score = 0;
 uint8_t LivesRemaining;
 uint16_t secondsPast; 
-uint8_t numFood = 5;
+uint8_t food_in_inventory = 5;
 
 //DEBUGGING
 bool starting_platform = false;
@@ -151,7 +151,7 @@ const PROGMEM uint8_t block_image[4] = {
     0b11111111, 0b11000000  
 };
 
-const PROGMEM uint8_t food_image[3] = {
+uint8_t food_image[3] = {
     0b01000000,
     0b11100000,
     0b01000000,
@@ -241,18 +241,18 @@ int get_current_platform(Sprite s)
 void init_food ( void ){
     for (uint8_t i = 0; i < 5; i++){
         // Initially store food off screen and in_visible
-        sprite_init(&Food[i], 0, LCD_Y + 5, 3, 3, load_rom_bitmap(food_image, 3));
+        sprite_init(&Food[i], 0, LCD_Y + 5, 3, 3, food_image);
         Food[i].is_visible = false; 
     }
 }
 
 void drop_food ( void ){
-    if (numFood > 0){
-        Food[numFood -1].x = player.x;
-        Food[numFood -1].y = player.y + 1;
-        Food[numFood -1].dx = Platforms[current_block].dx;
-        Food[numFood -1].is_visible = true;
-        numFood--;
+    if (food_in_inventory > 0){
+        Food[food_in_inventory -1].x = player.x;
+        Food[food_in_inventory -1].y = player.y + 1;
+        Food[food_in_inventory -1].dx = Platforms[current_block].dx;
+        Food[food_in_inventory -1].is_visible = true;
+        food_in_inventory--;
     }
 }
 
@@ -303,14 +303,24 @@ void drop_zombies(){
     }
 }
 
+//13 e) when zombie collides with food
 void zombie_eat(){
-
+    for (int i = 0; i < 5; i++){
+        for (int j = food_in_inventory; j > 0 ;j--){
+            if (sprites_collide(Zombies[i], Food[j], 0)){
+                Zombies[i].y = -10;
+                Score += 10;
+                Food[j].y = LCD_Y + 5;
+                food_in_inventory += 1;
+            }
+        }
+    }
 }
 
 void zombie_movement(){
+    // todo add if only on screen
     for (uint8_t i = 0; i < 5; i++){ // Gravity
         int plat = get_current_platform(Zombies[i]);
-        zombie_eat();
         // do not check once zombie is on block
         if (Zombies[i].dy != 0){
             if (plat != -1){
@@ -339,7 +349,7 @@ void zombie_movement(){
             Zombies[i].x = 0 - 8;
         }
         
-        if (Zombies[i].dy == 0 && Zombies[i].x > 0 && Zombies[i].x < LCD_X - 1){
+        if (Zombies[i].dy == 0 && Zombies[i].x > 0 && Zombies[i].x < LCD_X - 1 && Zombies[i].y > 0){
             int offset = 0;
             double cdx = Zombies[i].dx;
             if (cdx < 0) { offset = -2; }
@@ -358,6 +368,27 @@ void zombie_movement(){
         }
 
     }
+}
+
+void die ( char * death_type ); // so compiler can see die function
+
+//TODO order functions properly/ in call order
+
+void player_zombie_collide(){
+    for (int i = 0; i < 5; i++){
+        if (sprites_collide(Zombies[i], player, 0)){
+            die("Player hit Zombie");
+            //TODO check this long char string wont break serial serial_comms
+            // TODO store string in progmem.
+        }
+    }
+}
+
+void process_zombies(){
+    drop_zombies();
+    zombie_movement();
+    zombie_eat();
+    player_zombie_collide(); //TODO re-enable for zombie death.
 }
 
 // Returns seconds past - code used from AMS Topic 9 ex 2
@@ -546,6 +577,7 @@ void gravity( void )
         player.dy = 0.1;
     }
     
+    //TODO what is this???
     if (!playerCollision && playerMovingLeft && !playerJumping){
         player.dx = -0.5;
     }
@@ -645,14 +677,14 @@ void serial_comms ( uint8_t event, char* death_type ){
     }
     else if (event == 5){ //Zombie eats food
         // TODO num zombies
-        sprintf(output, (char*)load_rom_string(serialText_ZombieFood), 5, numFood, minutes, seconds);
+        sprintf(output, (char*)load_rom_string(serialText_ZombieFood), 5, food_in_inventory, minutes, seconds);
     }
     else if (event == 6){ //Chest Collide
         sprintf(output, (char*)load_rom_string(serialText_ChestCollide), Score, LivesRemaining, minutes, seconds, player.x, player.y);
     }
     else if (event == 7){ // Pause Button
         //TODO num_Zombies
-        sprintf(output, (char*)load_rom_string(serialText_Pause), LivesRemaining, Score, minutes, seconds, 5, numFood);
+        sprintf(output, (char*)load_rom_string(serialText_Pause), LivesRemaining, Score, minutes, seconds, 5, food_in_inventory);
     }
     else if (event == 8){ //Game Over
         //TODO zombies fed
@@ -689,7 +721,7 @@ void die ( char * death_type )
         player.y = 0;
         player.is_visible = 1;
         init_food();
-        numFood = 5;
+        food_in_inventory = 5;
         show_screen();
         screen_fade_up( ADC_MAX, MY_LCD_CONTRAST );
         serial_comms(3, NULL);
@@ -1036,6 +1068,16 @@ void draw_all(){
     draw_line( LCD_X-1, 0, LCD_X-1, LCD_Y, FG_COLOUR );
 }
 
+int count_zombies( void ){
+    int count = 0;
+    for (int i = 0; i < 5; i++){
+        if (Zombies[i].y > 0 && Zombies[i].y < LCD_Y ){
+            count++;
+        }
+    }
+    return count;
+}
+
 void game_pause_screen()
 {
     if (LivesRemaining == 0){
@@ -1049,16 +1091,20 @@ void game_pause_screen()
     char score[11];
     char counter[10]; 
     char food[10];
+    char zombies[13];
 
     sprintf(lives, "%d lives left", LivesRemaining);
     sprintf(score, "Score: %d", Score);
-    sprintf(food, "Food: %d", numFood);
+    sprintf(food, "Food: %d", food_in_inventory);
     sprintf(counter, "%02u:%02u", minutes, seconds);
+    sprintf(zombies, "Zombies: %d", count_zombies());
+
     uint8_t sy = 4;
     draw_string(10,sy, lives, FG_COLOUR);
     draw_string(20,sy+8, score, FG_COLOUR);
     draw_string(24,sy+16, food, FG_COLOUR);
-    draw_string(28,sy+24, counter, FG_COLOUR);
+    draw_string(16,sy+24, zombies, FG_COLOUR);
+    draw_string(28,sy+32, counter, FG_COLOUR);
     show_screen();
     if (pause_pressed || check_serial('p')){
         _delay_ms(200);
@@ -1126,8 +1172,7 @@ int main ( void ){
                 clear_screen();
                 //long left_adc = adc_read(0);
                 //backlight_pwm(ADC_MAX - left_adc);
-                drop_zombies();
-                zombie_movement();
+                process_zombies();
                 check_out_of_bounds();
                 platforms_collide();
                 check_pot();
