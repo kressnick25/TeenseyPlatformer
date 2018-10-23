@@ -215,6 +215,28 @@ bool sprites_collide(Sprite s1, Sprite s2, uint8_t offset)
     // return !( (top > bottom2) || (top2 > bottom1) || (right1 < left2) || (right2 < left1));
 }
 
+int get_current_platform(Sprite s)
+{
+    int sl = (int)round(s.x);
+    int sr = sl + s.width - 1;
+    int sy = (int)round(s.y);
+
+    for(int i = 0; i < sizeOfPlatforms; i++)
+    {
+        sprite_id p = &Platforms[i];
+        int pl = (int)round(p->x);
+        int pr = pl + p->width - 1;
+        int py = (int)round(p->y);
+
+        if(sr >= pl && sl <= pr && sy == py - s.height)
+        {
+            return i;
+        }
+    } 
+
+    return -1;
+}
+
 //FOOD
 void init_food ( void ){
     for (uint8_t i = 0; i < 5; i++){
@@ -768,45 +790,39 @@ void update_player_speed( uint8_t platformNumber ){
 }
 
 // Checks for collision between the player and each block 'Platforms' array
-bool platforms_collide( void ) 
+void platforms_collide( void ) 
 {
     bool output = false;
     uint8_t c = 0;
-    // TODO check closest platform to player only.
-    for (int i = 0; i < sizeOfPlatforms; i++){
-        //if(Platforms[i] != NULL)    // Do not check empty platforms //TODO
-        //{     
-        // box collision before pixel_level_collision - greatly improves performance
-        if (sprites_collide(player, Platforms[i], -1)){
-            if (pixel_level_collision(&player, &Platforms[i])){
-                if(Platforms[i].bitmap == bad_image){
-                    die("bad_platform");
-                    output = true;
-                    break;
-                }
-                else
-                {   // Die if any part of current block is off screen
-                    if(Platforms[i].x > LCD_X - Platforms[i].width ||
-                        Platforms[i].x < 0){
-                        die("block_off_screen");
-                    }
-                    // Update player speed so that player moves with platform on
-                    update_player_speed(i);
-                    playerJumping = false;
-                    output = true;
-                    if (c == 0){
-                        c = i;
-                    }
-                }
-            }
+    int current_platform = get_current_platform(player);
+    if (current_platform == -1){
+        playerCollision = false;
+    }
+    else if(Platforms[current_platform].bitmap == bad_image){
+        die("bad_platform");
+        output = true;
+    }
+    else
+    {   // Die if any part of current block is off screen
+        if(Platforms[current_platform].x > LCD_X - Platforms[current_platform].width ||
+            Platforms[current_platform].x < 0){
+            die("block_off_screen");
         }
-        //} 
+        // Update player speed so that player moves with platform on
+        update_player_speed(current_platform);
+        playerJumping = false;
+        output = true;
+        if (c == 0){
+            c = current_platform;
+        }
+        if (output == true){
+            increase_score(c);
+            playerCollision = true;
+        }
+        else{
+            playerCollision = false;
+        }
     }
-    if (output == true){
-        increase_score(c);
-    }
-    playerCollision = output;
-    return output;
 }
 
 // Cause the player to die if moved out of bounds to left, right or bottom of screen
@@ -835,8 +851,6 @@ void auto_move_treasure()
         treasure.dx = cdx;
     }
 }
-
-
 
 // Checks for player collision with chest, hides chest upon collision
 void chest_collide( void )
