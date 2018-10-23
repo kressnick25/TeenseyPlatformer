@@ -59,6 +59,7 @@ uint8_t numFood = 5;
 bool starting_platform = false;
 
 #define playerSpawnX 20
+#define ZOMBIE_SPEED 1.2
 
 Sprite treasure;
 Sprite player;
@@ -129,7 +130,7 @@ ISR(TIMER1_OVF_vect) {
 }
 
 
-// FLASH MEMORY STORAGE;
+// FLASH MEMORY STORAGE; // TODO remove these from flash storage?
 const PROGMEM uint8_t player_image[4] = {
     0b00100000,
     0b11111000,
@@ -154,6 +155,12 @@ const PROGMEM uint8_t food_image[3] = {
     0b01000000,
 };
 
+const PROGMEM uint8_t zombie_image[3] = {
+    0b11100000,
+    0b01000000,
+    0b10100000,
+};
+
 uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000,
     0b10101010, 0b10100000
@@ -168,6 +175,44 @@ void usb_serial_send(char * message) {
 	usb_serial_write((uint8_t *) message, strlen(message));
 }
 
+//from zdj
+bool sprites_collide(Sprite s1, Sprite s2, uint8_t offset)
+{
+    int top1 = round(s1.y);
+    int bottom1 = top1 + s1.height - 1 + offset;
+    int left1 = round(s1.x);
+    int right1 = left1 + s1.width - 1;
+
+    int top2 = round(s2.y);
+    int bottom2 = top2 + s2.height - 1;
+    int left2 = round(s2.x);
+    int right2 = left2 + s2.width - 1;
+
+    if(top1 > bottom2)
+    {
+        return false;
+    }
+    else if(top2 > bottom1)
+    {
+        return false;
+    }
+    else if(right1 < left2)
+    {
+        return false;
+    }
+    else if(right2 < left1)
+    {
+        return false;
+    }
+    else{
+        return true;
+    }
+
+    //Alternatively
+    // return !( (top > bottom2) || (top2 > bottom1) || (right1 < left2) || (right2 < left1));
+}
+
+//FOOD
 void init_food ( void ){
     for (uint8_t i = 0; i < 5; i++){
         // Initially store food off screen and in_visible
@@ -196,6 +241,61 @@ void draw_food (){
             Food[i].x = 0 - 8;
         }
         sprite_draw(&Food[i]);
+    }
+}
+
+void update_food_speed(){
+    for (uint8_t i = 0; i < 5; i++){ // Gravity
+        for (uint8_t j = 0; j < sizeOfPlatforms; j++){
+            if (sprites_collide(Food[i], Platforms[j], 1)){
+                Food[i].dx = Platforms[j].dx;
+            }
+        }
+    }    
+};
+
+//ZOMBIES
+void init_zombies(){
+    for (uint8_t i = 0; i < 5; i++){\
+        //Store zombies off screen at start
+        sprite_init(&Zombies[i], LCD_X - 5 - ((LCD_X / 5) * i), -4, 3, 3, load_rom_bitmap(zombie_image, 3));
+    }
+}
+
+void draw_zombies(){
+    for (uint8_t i = 0; i < 5; i++){
+        Zombies[i].x += Zombies[i].dx;
+        Zombies[i].y += Zombies[i].dy;
+        sprite_draw(&Zombies[i]);
+    }
+}
+
+void drop_zombies(){
+    if (secondsPast == 3){
+        for (uint8_t i = 0; i < 5; i++){
+            Zombies[i].dy = 0.25;
+        }
+    }
+}
+
+void zombie_movement(){
+    for (uint8_t i = 0; i < 5; i++){ // Gravity
+        // do not check once zombie is on block - save processing.
+        if (Zombies[i].dy != 0 || Zombies[i].y > LCD_Y){
+            for (uint8_t j = 0; j < sizeOfPlatforms; j++){
+                if (sprites_collide(Zombies[i], Platforms[j], 1)){
+                    Zombies[i].dy = 0;
+                    Zombies[i].dx = Platforms[j].dx * ZOMBIE_SPEED;
+                }
+            }
+        }
+        // teleport
+        if (Zombies[i].x + 10 < 0){ // Screen LHS
+                Zombies[i].x = LCD_X - 1;
+            }
+        else if(Zombies[i].x > LCD_X - 1){ // Screen RHS
+            Zombies[i].x = 0 - 8;
+        }
     }
 }
 
@@ -314,14 +414,25 @@ void auto_move_platforms( void )
 
 void change_platform_speed( float speed )
 {
+    speed *= GS;
     int c = 0;
     for (int i = 0; i < 4; i++){
         for (int j = 0; j < 7; j++){
-            Platforms[c].dx = 0.05 * speed * GS;
+            Platforms[c].dx = 0.05 * speed;
             c++;
         }
         speed = -speed;
     }
+    // adjust zombie speed as well
+    for (uint8_t k = 0; k < 5; k++){
+        if (Zombies[k].dx > 0 || Zombies[k].dx == 0){
+            Zombies[k].dx = 0.05 * speed * ZOMBIE_SPEED;
+        }
+        else if (Zombies[k].dx < 0){
+            Zombies[k].dx = 0.05 * -speed * ZOMBIE_SPEED;
+        }
+    }
+    update_food_speed();
 }
 
 void check_pot(){
@@ -336,6 +447,7 @@ void check_pot(){
 
 void gravity( void )
 {
+    // TODO clean up/fix
     // When on block, kill velocity
     if (playerCollision)
     {
@@ -536,12 +648,9 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 {       // Uses code from AMS wk5.
         // Only check bottom of player model, stops player getting stuck in blocks.
     uint8_t y = round(s1->y + 3); // add line 1 ie 5 pixel line
-    //int xcor[5] = {0, 4, 1, 2, 3};
-    //int ycor[5] = {1, 1, 4, 4, 4};
-    //for (uint8_t y = s1->y; y < s1->y + s1->height; y++){
-        for (uint8_t x = s1->x; x < s1->x + s1->width; x++){
-    //for (int y = 0; y < 5; y++){
-        //for (int x = 0; x < 5; x++){        
+
+    //for (uint8_t y = s1->y + 3; y < s1->y + s1->height + 3; y++){
+        for (uint8_t x = s1->x; x < s1->x + s1->width; x++){       
             // Get relevant values of from each sprite
             uint8_t sx1 = x - round(s1->x);
             uint8_t sy1 = y - ceil(s1->y);
@@ -563,8 +672,8 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
                     return true;
                 }
             }
-        }
-    //}
+        //}
+    }
     return false;
 }
 
@@ -587,6 +696,17 @@ void update_player_speed( uint8_t platformNumber ){
     else if (!playerMovingLeft && !playerMovingRight){
         player.dx = Platforms[i].dx;
     }
+
+    //condition if platforms stopped moving
+    if (Platforms[i].dx == 0 && playerMovingLeft){
+        player.dx = -moveSpeed;
+    }
+    else if (Platforms[i].dx == 0 && playerMovingRight){
+        player.dx = moveSpeed;
+    }
+    else if (Platforms[i].dx == 0 && !playerMovingLeft && !playerMovingRight){
+        player.dx = 0;
+    }
 }
 
 // Checks for collision between the player and each block 'Platforms' array
@@ -597,10 +717,10 @@ bool platforms_collide( void )
     // TODO check closest platform to player only.
     for (int i = 0; i < sizeOfPlatforms; i++){
         //if(Platforms[i] != NULL)    // Do not check empty platforms //TODO
-        //{ 
-            bool collide = pixel_level_collision(&player, &Platforms[i]);
-            if (collide)
-            {
+        //{     
+        // box collision before pixel_level_collision - greatly improves performance
+        if (sprites_collide(player, Platforms[i], -1)){
+            if (pixel_level_collision(&player, &Platforms[i])){
                 if(Platforms[i].bitmap == bad_image){
                     die("bad_platform");
                     output = true;
@@ -621,6 +741,7 @@ bool platforms_collide( void )
                     }
                 }
             }
+        }
         //} 
     }
     if (output == true){
@@ -657,47 +778,12 @@ void auto_move_treasure()
     }
 }
 
-//from zdj
-bool sprites_collide(Sprite s1, Sprite s2)
-{
-    int top1 = round(s1.y);
-    int bottom1 = top1 + s1.height - 1;
-    int left1 = round(s1.x);
-    int right1 = left1 + s1.width - 1;
 
-    int top2 = round(s2.y);
-    int bottom2 = top2 + s2.height - 1;
-    int left2 = round(s2.x);
-    int right2 = left2 + s2.width - 1;
-
-    if(top1 > bottom2)
-    {
-        return false;
-    }
-    else if(top2 > bottom1)
-    {
-        return false;
-    }
-    else if(right1 < left2)
-    {
-        return false;
-    }
-    else if(right2 < left1)
-    {
-        return false;
-    }
-    else{
-        return true;
-    }
-
-    //Alternatively
-    // return !( (top > bottom2) || (top2 > bottom1) || (right1 < left2) || (right2 < left1));
-}
 
 // Checks for player collision with chest, hides chest upon collision
 void chest_collide( void )
 { 
-    bool collide = sprites_collide(player, treasure);
+    bool collide = sprites_collide(player, treasure, 0);
     if (collide){
         treasure.x = LCD_X + 6;
         LivesRemaining += 3;
@@ -872,6 +958,7 @@ void setup_game(){
     sprite_draw( &player);
     sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, load_rom_bitmap(chest_image, 3));
     init_food();
+    init_zombies();
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
     serial_comms(1, NULL);
@@ -883,6 +970,7 @@ void draw_all(){
     sprite_draw(&treasure);
     sprite_draw(&player); 
     draw_food();
+    draw_zombies();
     draw_line( 0, 0, 0, LCD_Y, FG_COLOUR);
     draw_line( LCD_X-1, 0, LCD_X-1, LCD_Y, FG_COLOUR );
 }
@@ -964,6 +1052,7 @@ int main ( void ){
         _delay_ms(100);
     }
 
+    //TODO
     setup_game(); // move inside game loop
 
     while(!gameExit)
@@ -976,6 +1065,8 @@ int main ( void ){
                 clear_screen();
                 //long left_adc = adc_read(0);
                 //backlight_pwm(ADC_MAX - left_adc);
+                drop_zombies();
+                zombie_movement();
                 check_out_of_bounds();
                 platforms_collide();
                 check_pot();
