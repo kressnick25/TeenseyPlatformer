@@ -1097,7 +1097,7 @@ void setup_main(){
 
 void setup_game(){
     srand(time_overflow_counter); //TODO properly seed this
-    LivesRemaining = 1; //TODO set to 10
+    LivesRemaining = 10; //TODO set to 10
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
