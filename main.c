@@ -208,6 +208,7 @@ const unsigned char serialText_GameOver[81] PROGMEM = "Game Over - Lives: 0, Sco
 
 void serial_comms ( uint8_t event, char* death_type ){
     char output[86]; // allocate max for largest text //TODO check max
+    memset(output, 0 , 86*sizeof(output[0]));
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
     //TODO format minutes/seconds
@@ -465,7 +466,7 @@ void process_zombies(){
     drop_zombies();
     zombie_movement();
     zombie_eat();
-    //player_zombie_collide();//TODO debugging, re-enable.
+    player_zombie_collide();//TODO debugging, re-enable.
 }
 
 // Returns seconds past - code used from AMS Topic 9 ex 2
@@ -746,6 +747,8 @@ void die ( char * death_type )
         show_screen();
         screen_fade_up( ADC_MAX, MY_LCD_CONTRAST );
         serial_comms(3, NULL);
+        playerMovingLeft = false;
+        playerMovingRight = false;
     }
     
     if (LivesRemaining == 0)
@@ -1236,6 +1239,3 @@ int main ( void ){
     show_screen();
     return 0;
 }
-
-// DEBUG LINE
-// draw_string(22, 24, "DEBUG", FG_COLOUR);
