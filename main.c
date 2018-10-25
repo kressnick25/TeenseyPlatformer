@@ -28,7 +28,7 @@
 // gs multiplier, alter to change gamespeed.
 #define GS 1.1;
 #define MAX_PSPEED 10
-#define sizeOfPlatforms 28
+#define sizeOfPlatforms 29
 
 //PWM
 #define BIT(x) (1 << (x))
@@ -44,7 +44,7 @@ bool gameExit = false;
 bool playerCollision = true;
 bool treasureMove = true;
 bool playerMovingRight = false;
-bool playerMovingLeft = true;
+bool playerMovingLeft = false;
 bool playerJumping = false;
 bool Flash = true;
 //TODO put these in struct
@@ -57,9 +57,9 @@ uint16_t secondsPast;
 uint8_t food_in_inventory = 5;
 
 //DEBUGGING
-bool starting_platform = false;
+bool starting_platform = true;
 
-#define playerSpawnX 20
+#define playerSpawnX 4
 #define ZOMBIE_SPEED 1.2
 
 Sprite treasure;
@@ -168,6 +168,15 @@ uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000
 };
 
+int count_zombies( void ){
+    int count = 0;
+    for (int i = 0; i < 5; i++){
+        if (Zombies[i].y > 0 && Zombies[i].y < LCD_Y ){
+            count++;
+        }
+    }
+    return count;
+}
 
 /* Code from topic 10 - USB serial examples
 **	Transmits a string via usb_serial.
@@ -176,6 +185,57 @@ void usb_serial_send(char * message) {
 	// Cast to avoid "error: pointer targets in passing argument 1 
 	//	of 'usb_serial_write' differ in signedness"
 	usb_serial_write((uint8_t *) message, strlen(message));
+}
+
+//TODO change to array? 
+//TODO format minutes/seconds
+// store each seperately to save space.
+const unsigned char serialText_GameStart[44] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
+const unsigned char serialText_Death[57] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
+const unsigned char serialText_Respawn[40] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
+const unsigned char serialText_ZombiesAppear[72] PROGMEM = "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n";
+const unsigned char serialText_ZombieFood[79] PROGMEM = "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n";
+const unsigned char serialText_ChestCollide[86] PROGMEM = "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n";
+const unsigned char serialText_Pause[81] PROGMEM = "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n";
+const unsigned char serialText_GameOver[81] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
+
+void serial_comms ( uint8_t event, char* death_type ){
+    char output[86]; // allocate max for largest text
+    uint8_t minutes = (secondsPast /60) % 60;
+    uint8_t seconds = secondsPast % 60;
+    //TODO format minutes/seconds
+    if (event == 1){ // Game Start
+        sprintf(output, (char*)load_rom_string(serialText_GameStart), player.x, player.y);
+    }
+    else if (event == 2){ // Player Death
+        sprintf(output, (char*)load_rom_string(serialText_Death), 
+                                                death_type, LivesRemaining, Score, minutes, seconds);
+    }
+    else if (event == 3){ //Player Respawn
+        sprintf(output, (char*)load_rom_string(serialText_Respawn), player.x, player.y);
+    }
+    else if (event == 4){ // Zombies Appear
+        //TODO zombies appear
+        sprintf(output, (char*)load_rom_string(serialText_ZombiesAppear), 5, minutes, seconds, LivesRemaining, Score );
+    }
+    else if (event == 5){ //Zombie eats food
+        // TODO num zombies
+        sprintf(output, (char*)load_rom_string(serialText_ZombieFood), count_zombies(), food_in_inventory, minutes, seconds);
+    }
+    else if (event == 6){ //Chest Collide
+        sprintf(output, (char*)load_rom_string(serialText_ChestCollide), Score, LivesRemaining, minutes, seconds, player.x, player.y);
+    }
+    else if (event == 7){ // Pause Button
+        //TODO num_Zombies
+        sprintf(output, (char*)load_rom_string(serialText_Pause), LivesRemaining, Score, minutes, seconds, 5, food_in_inventory);
+    }
+    else if (event == 8){ //Game Over
+        //TODO zombies fed
+        sprintf(output, (char*)load_rom_string(serialText_GameOver), Score, minutes, seconds, 0);
+    }
+    
+    usb_serial_send(output);
+
 }
 
 //from zdj
@@ -295,10 +355,16 @@ void draw_zombies(){
     }
 }
 
+bool sent_serial = false;
+
 void drop_zombies(){
     if (secondsPast == 3){
         for (uint8_t i = 0; i < 5; i++){
             Zombies[i].dy = 0.25;
+        }
+        if (!sent_serial){
+            serial_comms(4, NULL);
+            sent_serial = true;
         }
     }
 }
@@ -312,6 +378,7 @@ void zombie_eat(){
                 Score += 10;
                 Food[j].y = LCD_Y + 5;
                 food_in_inventory += 1;
+                serial_comms(5, NULL);
             }
         }
     }
@@ -455,7 +522,7 @@ uint8_t* choose_platform_type ( void )
 void create_platforms( void ) {
     //TODO enable this on death to change platforms
     //memset(Platforms, 0, sizeof Platforms); 
-    int initX = 0, initY = 7;
+    int initX = 0, initY = 8;
     int deltaY = 0;
     int c = 0;
     platformMultiplyer = adc_read(1) / 80;
@@ -644,56 +711,7 @@ void animate_death ( ){
     }
 }
 
-//TODO change to array? 
-//TODO format minutes/seconds
-// store each seperately to save space.
-const unsigned char serialText_GameStart[44] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
-const unsigned char serialText_Death[57] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
-const unsigned char serialText_Respawn[40] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
-const unsigned char serialText_ZombiesAppear[72] PROGMEM = "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n";
-const unsigned char serialText_ZombieFood[79] PROGMEM = "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n";
-const unsigned char serialText_ChestCollide[86] PROGMEM = "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n";
-const unsigned char serialText_Pause[81] PROGMEM = "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n";
-const unsigned char serialText_GameOver[81] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
 
-void serial_comms ( uint8_t event, char* death_type ){
-    char output[86]; // allocate max for largest text
-    uint8_t minutes = (secondsPast /60) % 60;
-    uint8_t seconds = secondsPast % 60;
-    //TODO format minutes/seconds
-    if (event == 1){ // Game Start
-        sprintf(output, (char*)load_rom_string(serialText_GameStart), player.x, player.y);
-    }
-    else if (event == 2){ // Player Death
-        sprintf(output, (char*)load_rom_string(serialText_Death), 
-                                                death_type, LivesRemaining, Score, minutes, seconds);
-    }
-    else if (event == 3){ //Player Respawn
-        sprintf(output, (char*)load_rom_string(serialText_Respawn), player.x, player.y);
-    }
-    else if (event == 4){ // Zombies Appear
-        //TODO zombies appear
-        sprintf(output, (char*)load_rom_string(serialText_ZombiesAppear), 5, minutes, seconds, LivesRemaining, Score );
-    }
-    else if (event == 5){ //Zombie eats food
-        // TODO num zombies
-        sprintf(output, (char*)load_rom_string(serialText_ZombieFood), 5, food_in_inventory, minutes, seconds);
-    }
-    else if (event == 6){ //Chest Collide
-        sprintf(output, (char*)load_rom_string(serialText_ChestCollide), Score, LivesRemaining, minutes, seconds, player.x, player.y);
-    }
-    else if (event == 7){ // Pause Button
-        //TODO num_Zombies
-        sprintf(output, (char*)load_rom_string(serialText_Pause), LivesRemaining, Score, minutes, seconds, 5, food_in_inventory);
-    }
-    else if (event == 8){ //Game Over
-        //TODO zombies fed
-        sprintf(output, (char*)load_rom_string(serialText_GameOver), Score, minutes, seconds, 0);
-    }
-    
-    usb_serial_send(output);
-
-}
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
@@ -1066,16 +1084,6 @@ void draw_all(){
     draw_zombies();
     draw_line( 0, 0, 0, LCD_Y, FG_COLOUR);
     draw_line( LCD_X-1, 0, LCD_X-1, LCD_Y, FG_COLOUR );
-}
-
-int count_zombies( void ){
-    int count = 0;
-    for (int i = 0; i < 5; i++){
-        if (Zombies[i].y > 0 && Zombies[i].y < LCD_Y ){
-            count++;
-        }
-    }
-    return count;
 }
 
 void game_pause_screen()
