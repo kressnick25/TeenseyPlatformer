@@ -720,8 +720,6 @@ void animate_death ( ){
     }
 }
 
-
-
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
 void die ( char * death_type )
@@ -743,8 +741,8 @@ void die ( char * death_type )
         player.x = playerSpawnX;
         player.y = 0;
         player.is_visible = 1;
-        init_food();
-        food_in_inventory = 5;
+        //init_food();
+        //food_in_inventory = 5;
         show_screen();
         screen_fade_up( ADC_MAX, MY_LCD_CONTRAST );
         serial_comms(3, NULL);
