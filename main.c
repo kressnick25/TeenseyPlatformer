@@ -923,31 +923,38 @@ bool check_serial (int character){
 }
 
 uint8_t downB_prevState;
-uint16_t downBCount = 0;
 uint8_t rightB_prevState; 
-uint16_t rightBCount;
-uint8_t leftB_prevstate;
-uint16_t leftBCount;
+uint8_t leftB_prevState;
 
 void control_player(){
     // move right
-    if ( (rightB_pressed && player.x < LCD_X - 5 && playerCollision))
+    if ( (rightB_pressed != rightB_prevState && player.x < LCD_X - 5 && playerCollision))
     {   
-        if (playerMovingLeft){
-            playerMovingLeft = false;
-        }
-        else{
-            playerMovingRight = true;
+        rightB_prevState = rightB_pressed;
+        static uint16_t rightCount;
+        rightCount++;
+        if (rightCount % 2 == 0){
+            if (playerMovingLeft){
+                playerMovingLeft = false;
+            }
+            else{
+                playerMovingRight = true;
+            }
         }
     }
     //move left
-    else if ((leftB_pressed && player.x > 0 && playerCollision))
+    else if ((leftB_pressed != leftB_prevState && player.x > 0 && playerCollision))
     {
-        if (playerMovingRight){
-            playerMovingRight = false;
-        }
-        else{
-            playerMovingLeft = true;
+        leftB_prevState = leftB_pressed;
+        static uint16_t leftCount;
+        leftCount++;
+        if (leftCount % 2 == 0){
+            if (playerMovingRight){
+                playerMovingRight = false;
+            }
+            else{
+                playerMovingLeft = true;
+            }
         }
     }
     // jump
@@ -970,8 +977,9 @@ void control_player(){
     
     else if ( downB_pressed != downB_prevState && playerCollision) {
 		downB_prevState = downB_pressed;
-        downBCount++;
-        if (downBCount % 2 == 0){
+        static uint16_t downCount;
+        downCount++;
+        if (downCount % 2 == 0){
 		    drop_food();
         }
 	}
