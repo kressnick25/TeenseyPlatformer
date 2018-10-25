@@ -40,6 +40,7 @@
 bool gameOver = false;
 bool gamePause = false;
 bool gameExit = false;
+bool run_setup = true;
 //bool gravity;
 bool playerFalling = false;
 bool playerCollision = true;
@@ -60,6 +61,7 @@ uint8_t food_in_inventory = 5;
 
 //DEBUGGING
 bool starting_platform = true;
+
 
 #define playerSpawnX 4
 #define ZOMBIE_SPEED 1.2
@@ -198,17 +200,19 @@ void usb_serial_send(char * message) {
 //TODO format minutes/seconds
 // store each seperately to save space.
 const unsigned char serialText_GameStart[50] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
-const unsigned char serialText_Death[60] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
-const unsigned char serialText_Respawn[45] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
+//const unsigned char serialText_Death[75] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
+const char serialText_Death[75] = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
+//const unsigned char serialText_Respawn[45] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
+const char serialText_Respawn[45] = "Respawn - player position: %.0f, %.0f\r\n";
 const unsigned char serialText_ZombiesAppear[75] PROGMEM = "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n";
 const unsigned char serialText_ZombieFood[85] PROGMEM = "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n";
 const unsigned char serialText_ChestCollide[90] PROGMEM = "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n";
 const unsigned char serialText_Pause[85] PROGMEM = "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n";
-const unsigned char serialText_GameOver[85] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
+const unsigned char serialText_GameOver[100] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
 
 void serial_comms ( uint8_t event, char* death_type ){
-    char output[95]; // allocate max for largest text //TODO check max
-    memset(output, 0 , 95*sizeof(output[0]));
+    char output[100]; // allocate max for largest text //TODO check max
+    memset(output, 0 , 100*sizeof(output[0]));
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
     //TODO format minutes/seconds
@@ -216,11 +220,13 @@ void serial_comms ( uint8_t event, char* death_type ){
         sprintf(output, (char*)load_rom_string(serialText_GameStart), player.x, player.y);
     }
     else if (event == 2){ // Player Death
-        sprintf(output, (char*)load_rom_string(serialText_Death), 
-                                                death_type, LivesRemaining, Score, minutes, seconds);
+        //sprintf(output, (char*)load_rom_string(serialText_Death), 
+                                                //death_type, LivesRemaining, Score, minutes, seconds);
+        sprintf(output, serialText_Death, death_type, LivesRemaining, Score, minutes, seconds);
     }
     else if (event == 3){ //Player Respawn
-        sprintf(output, (char*)load_rom_string(serialText_Respawn), player.x, player.y);
+        //sprintf(output, (char*)load_rom_string(serialText_Respawn), player.x, player.y);
+        sprintf(output, serialText_Respawn, player.x, player.y);
     }
     else if (event == 4){ // Zombies Appear
         //TODO zombies appear
@@ -1091,7 +1097,7 @@ void setup_main(){
 
 void setup_game(){
     srand(time_overflow_counter); //TODO properly seed this
-    LivesRemaining = 10; //TODO set to 10
+    LivesRemaining = 1; //TODO set to 10
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
@@ -1106,6 +1112,9 @@ void setup_game(){
     playerMovingLeft = false;
     playerMovingRight = false;
     time_overflow_counter = 0;
+    secondsPast = 0;
+    stopTime = false;
+    Flash = true;
 
 }
 
@@ -1157,6 +1166,7 @@ void game_pause_screen()
 
 void gameOverScreen()
 {
+    run_setup = false;
     static bool sent_serial = false;
     if (!sent_serial){
         serial_comms(8, NULL);
@@ -1176,16 +1186,32 @@ void gameOverScreen()
     draw_string(20,sy+8, score, FG_COLOUR);
     draw_string(28,sy+16, counter, FG_COLOUR);
     show_screen();
-    if (switchR_pressed || check_serial('r')){
-        setup_game();
-        Score = 0;
-        gamePause = false;
-        gameOver = false;
-        
-    }
-    if (switchL_pressed || check_serial('q')){
+
+    if (switchL_pressed){
         gameExit = true;
     }
+    else if (switchR_pressed){
+        setup_game();
+        Score = 0;
+        run_setup = true;
+        gamePause = false;
+        gameOver = false;
+    }
+
+    if ( usb_serial_available() ) {
+		int c = usb_serial_getchar();
+		if ( c == 'q'){
+            gameExit = true;
+        }
+        if ( c == 'r'){
+            setup_game();
+            Score = 0;
+            run_setup = true;
+            gamePause = false;
+            gameOver = false;
+        }
+	}
+    
 }
 
 int main ( void ){
@@ -1210,7 +1236,7 @@ int main ( void ){
 
     while(!gameExit)
     {   
-        setup_game(); //TODO fix score here.
+        if (run_setup) { setup_game(); } //TODO fix score here.
         while(!gameOver)
         {   
             

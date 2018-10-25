@@ -1533,3 +1533,255 @@ Respawn - player position: 20, 0
 Pause - Lives: 8, Score: 4, time: 0:9, num_Zombies: 5, Food_Remaining: 5
 Game Start - player positon: 20 , 0 
 Pause - Lives: 10, Score: 2, time: 0:1, num_Zombies: 5, Food_Remaining: 5
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:3 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:5 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:8 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:11 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:13 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:16 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:20 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:22 Respawn - player position: 4, 0
+¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:0 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:3 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:5 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:7 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:10 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:12 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:14 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:16 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: Respawn - player position: 4, 0
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:2 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:5 
+Respawn - player position: 4, 0
+Death - reason: bad_platform, lives: 7, score: 2, time: 0:19 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 3, time: 0:25 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 3, time: 0:29 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 3, time: 0:32 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 3, time: 0:34 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 3, time: 0:36 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 3, time: 0:37 
+<
+= ˜7300000000Respawn - player position: 4, 0
+¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: Player hit Zombie, lives: 8, score: 1, time: 0:3 
+Respawn - player position: 4, 0
+Death - reason: Player hit Zombie, lives: 7, score: 2, time: 0:9 
+Respawn - player position: 4, 0
+Death - reason: Player hit Zombie, lives: 6, score: 4, time: 0:15 
+Respawn - player position: 4, 0
+Death - reason: Player hit Zombie, lives: 5, score: 5, time: 0:18 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 5, time: 0:20 
+Respawn - player position: 4, 0
+Death - reason: Player hit Zombie, lives: 3, score: 5, time: 0:24 
+Respawn - player position: 4, 0
+Death - reason: bad_platform, lives: 2, score: 7, time: 0:33 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 9, time: 0Respawn - player position: 4, 0
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:3 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:7 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:9 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:12 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:14 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:18 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:22 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:Respawn - player position: 4, 0
+¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:4 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:7 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:12 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:15 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:19 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:22 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:26 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:28 
+Respawn - player position: 4, 0
+Game Over - Lives: 0, Score: 1, time: 0:35, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - play
+:
+~ ◊iton: 4 ¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:4 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:7 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:9 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:12 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:14 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:17 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:20 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:23 
+Respawn - player position: 4, 0
+Game Over - Lives: 0, Score: 1, time: 0:30, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Death - reason: block_off_screen, lives: 9, score: 8, time: 0:0 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 8, score: 9, time: 0:0 
+Respawn - player position: 4, 0
+Pause - Lives: 8, Score: 9, time: 0:0, num_Zombies: 5, Food_Remaining: 5
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 8, score: 9
+Death - reason: Player hit Zombie, lives: 7, score: 9, time: 0:3 
+Respawn - player position: 4, 0
+Pause - Lives: 7, Score: 9, time: 0:5, num_Zombies: 5, Food_Remaining: 5
+Pause - Lives: 7, Score: 9, time: 0:7, num_Death - reason: player_off_screen, lives: 6, score: 9, time: 0:9 
+Respawn - player position: 4, 0
+¿Death - reason: player_off_screen, lives: 5, score: 9, time: 0:15 
+Respawn - player position: 4, 0
+¿Death - reason: Player hit Zombie, lives: 4, score: 9, time: 0:21 
+Respawn - player position: 4, 0
+ÄÄDeath - reason: bad_platform, lives: 3, score: 10, time: 0:27 
+Respawn - player position: 4, 0
+¿Ä¿¿¿Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:3 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:5 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:8 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:10 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:12 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:15 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:17 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:19 
+Respawn - player position: 4, 0
+Game Over - Lives: 0, Score: 1, time: 0:25, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 0, time: 0:0 
+Respawn - player position: 4, 0
+Pause - Lives: 9, Score: 0, time: 0:0, num_Zombies: 5, Food_Remaining: 3
+Pause - Lives: 9, Score: 0, time: 0:0, num_Zombies: 5, Food_Remaining: 3
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 0
+Pause - Lives: 9, Score: 0, time: 0:3, ¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:2 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:4 
+Respawn - player position: 4, 0
+Death - reason: bad_platform, lives: 7, score: 6, time: 0:14 
+Respawn - player position: 4, 0
+Death - reason: bad_platform, lives: 6, score: 8, time: 0:19 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 12, time: 0:31 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 13, time: 0:35 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 15, time: 0:45 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 16, time: 0:49 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 16, time: 0:52 
+Respawn - player position: 4, 0
+Game Over - Lives: 0, Score: 16, time: 0:58, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Over - Lives: 0, Score: 1, time: 0:4, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 1, score: 1Game Over - Lives: 0, Score: 1, time: 0:13, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 1, score: 1
+Game Over - Lives: 0, Score: 1, time: 0:11, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Game Over - Lives: 0, Score: 1, time: 0:5, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:4 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:8 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:11 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:14 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:16 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:19 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:21 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:26 
+Respawn - player position: 4, 0
+Game Over - Lives: 0, Score: 1, time: 0:35, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
