@@ -41,12 +41,14 @@ bool gameOver = false;
 bool gamePause = false;
 bool gameExit = false;
 //bool gravity;
+bool playerFalling = false;
 bool playerCollision = true;
 bool treasureMove = true;
 bool playerMovingRight = false;
 bool playerMovingLeft = false;
 bool playerJumping = false;
 bool Flash = true;
+bool stopTime = false;
 //TODO put these in struct
 float pot1Value; 
 float platformMultiplyer = 1;
@@ -91,10 +93,13 @@ volatile uint8_t switchR_pressed;
 // seconds timer
 volatile uint32_t time_overflow_counter = 0;
 volatile uint32_t led_overflow_counter = 0;
+volatile uint32_t seed_overflow_counter = 0;
+
 
 ISR(TIMER0_OVF_vect){
+    seed_overflow_counter++;
     uint8_t mask = 0b00000011;
-    uint8_t downB_mask = 0b11111111;
+    uint8_t downB_mask = 0b00001111;
     //pause button
     pause_counter = ((pause_counter << 1) & mask) | BIT_IS_SET(PINB, 0);
     if (pause_counter == mask){ pause_pressed = 1; } 
@@ -127,12 +132,14 @@ ISR(TIMER0_OVF_vect){
 }
 
 ISR(TIMER1_OVF_vect) {
-	time_overflow_counter++;
+    if (!stopTime){
+	    time_overflow_counter++;
+    }
 }
 
 
 
-// FLASH MEMORY STORAGE; // TODO remove these from flash storage?
+// FLASH MEMORY STORAGE; 
 uint8_t player_image[4] = {
     0b00100000,
     0b11111000,
@@ -165,7 +172,7 @@ uint8_t zombie_image[3] = {
 
 uint8_t bad_image[4] = { // Shouldn't be stored in progmem, used too often.
     0b10101010, 0b10100000,
-    0b10101010, 0b10100000
+    0b11111111, 0b11110000
 };
 
 int count_zombies( void ){
@@ -200,7 +207,7 @@ const unsigned char serialText_Pause[81] PROGMEM = "Pause - Lives: %d, Score: %d
 const unsigned char serialText_GameOver[81] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
 
 void serial_comms ( uint8_t event, char* death_type ){
-    char output[86]; // allocate max for largest text
+    char output[86]; // allocate max for largest text //TODO check max
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
     //TODO format minutes/seconds
@@ -361,7 +368,7 @@ void drop_zombies(){
     if (secondsPast == 3){
         for (uint8_t i = 0; i < 5; i++){
             Zombies[i].dy = 0.25;
-            Zombies[i].y = -4;
+            Zombies[i].y = 0;
         }
         if (!sent_serial){
             serial_comms(4, NULL);
@@ -369,6 +376,8 @@ void drop_zombies(){
         }
     }
 }
+
+//TODO fix score
 
 //13 e) when zombie collides with food
 void zombie_eat(){
@@ -456,7 +465,7 @@ void process_zombies(){
     drop_zombies();
     zombie_movement();
     zombie_eat();
-    player_zombie_collide(); //TODO re-enable for zombie death.
+    //player_zombie_collide();//TODO debugging, re-enable.
 }
 
 // Returns seconds past - code used from AMS Topic 9 ex 2
@@ -521,8 +530,6 @@ uint8_t* choose_platform_type ( void )
 }
 
 void create_platforms( void ) {
-    //TODO enable this on death to change platforms
-    //memset(Platforms, 0, sizeof Platforms); 
     int initX = 0, initY = 8;
     int deltaY = 0;
     int c = 0;
@@ -642,6 +649,7 @@ void gravity( void )
     // Else give player falling velocity
     else if(!playerCollision)// && player.dy == 0.0)
     {
+        playerFalling = true;
         player.dy = 0.1;
     }
     
@@ -716,7 +724,6 @@ void animate_death ( ){
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
-// TODO choose safe block
 void die ( char * death_type )
 {   
     LivesRemaining--;
@@ -729,13 +736,10 @@ void die ( char * death_type )
         }
         screen_fade_down( ADC_MAX, MY_LCD_CONTRAST );
         player.is_visible = 0;
-        //create_platforms(); //TODO
         //reset player variables
         player.dx = 0;
         player.dy = 0;
-        //choose safe platform to move to
-        //sprite_id safe_block = choose_safe_block();
-        //sprite_move_to(player, safe_block->x, safe_block->y - 3);
+
         player.x = playerSpawnX;
         player.y = 0;
         player.is_visible = 1;
@@ -801,6 +805,13 @@ void update_player_speed( uint8_t platformNumber ){
     uint8_t i = platformNumber;
     float moveSpeed = 0.3;
     float struggleSpeed = 0.6;
+    if (playerFalling){
+        playerMovingLeft = false;
+        playerMovingRight = false;
+        player.dx = Platforms[i].dx;
+        playerFalling = false;
+    }
+
     if (playerMovingLeft && Platforms[i].dx < 0){
         player.dx = -moveSpeed + Platforms[i].dx;
     }
@@ -869,8 +880,8 @@ void platforms_collide( void )
 void check_out_of_bounds( void )
 {
     if (player.y >= LCD_Y + 6 || 
-        player.x + player.width < 0 || 
-        player.x > LCD_X)
+        player.x < 0 || 
+        player.x + player.width > LCD_X)
         {
         die("player_off_screen");
     }     
@@ -911,6 +922,13 @@ bool check_serial (int character){
     return false;
 }
 
+uint8_t downB_prevState;
+uint16_t downBCount = 0;
+uint8_t rightB_prevState; 
+uint16_t rightBCount;
+uint8_t leftB_prevstate;
+uint16_t leftBCount;
+
 void control_player(){
     // move right
     if ( (rightB_pressed && player.x < LCD_X - 5 && playerCollision))
@@ -949,14 +967,14 @@ void control_player(){
     else if (switchR_pressed){ // TODO move this to seperate function (?)
         treasureMove = !treasureMove;
     }
-    else if ((downB_pressed && playerCollision)){ // TODO better debounce
-        drop_food();
-    }
-    /**
-    else if ( pause_pressed != prevState ) {
-		prevState = pause_pressed;
-		gamePause = !gamePause;
-	}**/
+    
+    else if ( downB_pressed != downB_prevState && playerCollision) {
+		downB_prevState = downB_pressed;
+        downBCount++;
+        if (downBCount % 2 == 0){
+		    drop_food();
+        }
+	}
     else if (pause_pressed){
         serial_comms(7, NULL);
         _delay_ms(200);
@@ -1004,12 +1022,14 @@ void control_player(){
             gamePause = true;
         }
 	}
+    
+    // keeps Horizontal jumping in line.
     else 
     {
-        if (player.dx > 0.0){
+        if (player.dx > 0.0 && !playerCollision){
             player.dx -= 0.1;
         }
-        if (player.dx < 0.0){
+        if (player.dx < 0.0 && !playerCollision){
             player.dx += 0.1;
         }
     }
@@ -1047,7 +1067,6 @@ void setup_timers(){
 }
 
 void setup_main(){
-    srand(100); //TODO proper timer seed.
     set_clock_speed(CPU_8MHz);
     lcd_init(MY_LCD_CONTRAST);
     init_buttons();
@@ -1060,9 +1079,8 @@ void setup_main(){
 }
 
 void setup_game(){
-    LivesRemaining = 2; //TODO set to 10
-    Score = 0;
-    time_overflow_counter = 0;
+    srand(time_overflow_counter); //TODO properly seed this
+    LivesRemaining = 10; //TODO set to 10
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
@@ -1074,9 +1092,10 @@ void setup_game(){
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
     serial_comms(1, NULL);
-    time_overflow_counter = 0;
     playerMovingLeft = false;
     playerMovingRight = false;
+    time_overflow_counter = 0;
+
 }
 
 // draw sprites in order of overlap - sprites draw last on top.
@@ -1096,6 +1115,7 @@ void game_pause_screen()
         serial_comms(8, NULL);
         gameOver = true;
     }
+    stopTime = true;
     clear_screen();
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
@@ -1121,6 +1141,7 @@ void game_pause_screen()
     if (pause_pressed || check_serial('p')){
         _delay_ms(200);
         gamePause = false;
+        stopTime = false;
     }
 }
 
@@ -1142,6 +1163,7 @@ void gameOverScreen()
     show_screen();
     if (switchR_pressed || check_serial('r')){
         setup_game();
+        Score = 0;
         gamePause = false;
         gameOver = false;
         
@@ -1171,12 +1193,9 @@ int main ( void ){
         _delay_ms(100);
     }
 
-    //TODO
-     // move inside game loop
-
     while(!gameExit)
     {   
-        setup_game();
+        setup_game(); //TODO fix score here.
         while(!gameOver)
         {   
             
@@ -1199,9 +1218,8 @@ int main ( void ){
                 draw_all();
                 //DEBUG
                 secondsPast = get_current_time();
-                if (Flash){ led_flash(); }//TODO renable
+                if (Flash){ led_flash(); }
                 show_screen();
-                _delay_ms(0); // TODO actual interupt service.
             }
             game_pause_screen();  
         }
