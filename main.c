@@ -197,18 +197,18 @@ void usb_serial_send(char * message) {
 //TODO change to array? 
 //TODO format minutes/seconds
 // store each seperately to save space.
-const unsigned char serialText_GameStart[44] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
-const unsigned char serialText_Death[57] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
-const unsigned char serialText_Respawn[40] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
-const unsigned char serialText_ZombiesAppear[72] PROGMEM = "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n";
-const unsigned char serialText_ZombieFood[79] PROGMEM = "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n";
-const unsigned char serialText_ChestCollide[86] PROGMEM = "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n";
-const unsigned char serialText_Pause[81] PROGMEM = "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n";
-const unsigned char serialText_GameOver[81] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
+const unsigned char serialText_GameStart[50] PROGMEM = "Game Start - player positon: %.0f , %.0f \r\n";
+const unsigned char serialText_Death[60] PROGMEM = "Death - reason: %s, lives: %d, score: %d, time: %d:%d \r\n";
+const unsigned char serialText_Respawn[45] PROGMEM = "Respawn - player position: %.0f, %.0f\r\n";
+const unsigned char serialText_ZombiesAppear[75] PROGMEM = "Zombies Appeared - num_Zombies: %d, time: %d:%d, lives: %d, score: %d\r\n";
+const unsigned char serialText_ZombieFood[85] PROGMEM = "Zombie Ate Food - num_Zombies_Remaining: %d, Food_Remaining: %d, time: %d:%d\r\n";
+const unsigned char serialText_ChestCollide[90] PROGMEM = "Treasure Collected - Score: %d, Lives: %d, time: %d:%d, player_position: %.0f, %.0f\r\n";
+const unsigned char serialText_Pause[85] PROGMEM = "Pause - Lives: %d, Score: %d, time: %d:%d, num_Zombies: %d, Food_Remaining: %d\r\n";
+const unsigned char serialText_GameOver[85] PROGMEM = "Game Over - Lives: 0, Score: %d, time: %d:%d, Zombies_Fed: %d\r\n";
 
 void serial_comms ( uint8_t event, char* death_type ){
-    char output[86]; // allocate max for largest text //TODO check max
-    memset(output, 0 , 86*sizeof(output[0]));
+    char output[95]; // allocate max for largest text //TODO check max
+    memset(output, 0 , 95*sizeof(output[0]));
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
     //TODO format minutes/seconds
@@ -363,9 +363,8 @@ void draw_zombies(){
     }
 }
 
-bool sent_serial = false;
-
 void drop_zombies(){
+    static bool sent_serial = false;
     if (secondsPast == 3){
         for (uint8_t i = 0; i < 5; i++){
             Zombies[i].dy = 0.25;
@@ -375,6 +374,9 @@ void drop_zombies(){
             serial_comms(4, NULL);
             sent_serial = true;
         }
+    }
+    else if(sent_serial == true){
+        sent_serial = false;
     }
 }
 
@@ -1121,7 +1123,6 @@ void draw_all(){
 void game_pause_screen()
 {
     if (LivesRemaining == 0){
-        serial_comms(8, NULL);
         gameOver = true;
     }
     stopTime = true;
@@ -1156,6 +1157,11 @@ void game_pause_screen()
 
 void gameOverScreen()
 {
+    static bool sent_serial = false;
+    if (!sent_serial){
+        serial_comms(8, NULL);
+        sent_serial = true;
+    }
     clear_screen();
     uint8_t minutes = (secondsPast /60) % 60;
     uint8_t seconds = secondsPast % 60;
