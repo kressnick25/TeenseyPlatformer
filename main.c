@@ -133,20 +133,20 @@ ISR(TIMER1_OVF_vect) {
 
 
 // FLASH MEMORY STORAGE; // TODO remove these from flash storage?
-const PROGMEM uint8_t player_image[4] = {
+uint8_t player_image[4] = {
     0b00100000,
     0b11111000,
     0b01010000,
     0b01110000
 };
 
-const PROGMEM uint8_t chest_image[3] = {
+uint8_t chest_image[3] = {
     0b01010000,
     0b10101000,
     0b01110000,
 };
 
-const PROGMEM uint8_t block_image[4] = {
+uint8_t block_image[4] = {
     0b11111111, 0b11000000,
     0b11111111, 0b11000000  
 };
@@ -157,7 +157,7 @@ uint8_t food_image[3] = {
     0b01000000,
 };
 
-const PROGMEM uint8_t zombie_image[3] = {
+uint8_t zombie_image[3] = {
     0b11100000,
     0b01000000,
     0b10100000,
@@ -343,7 +343,7 @@ void update_food_speed(){
 void init_zombies(){
     for (uint8_t i = 0; i < 5; i++){\
         //Store zombies off screen at start
-        sprite_init(&Zombies[i], LCD_X - 5 - ((LCD_X / 5) * i), -4, 3, 3, load_rom_bitmap(zombie_image, 3));
+        sprite_init(&Zombies[i], LCD_X - 5 - ((LCD_X / 5) * i), -10, 3, 3, zombie_image);
     }
 }
 
@@ -361,6 +361,7 @@ void drop_zombies(){
     if (secondsPast == 3){
         for (uint8_t i = 0; i < 5; i++){
             Zombies[i].dy = 0.25;
+            Zombies[i].y = -4;
         }
         if (!sent_serial){
             serial_comms(4, NULL);
@@ -508,7 +509,7 @@ uint8_t* choose_platform_type ( void )
     int i = rand_number(0,8);
     uint8_t* type;
     if (i <= 2){
-        type = load_rom_bitmap(block_image, 4);
+        type = block_image;
     }
     else if (i == 3){
         type = bad_image; //load_rom_bitmap(bad_image, 4);
@@ -552,7 +553,7 @@ void create_platforms( void ) {
         deltaY += 10;
     }
     if (starting_platform){
-        sprite_init(&Platforms[c], 0, 4, 10, 1, load_rom_bitmap(block_image, 2));
+        sprite_init(&Platforms[c], 0, 4, 10, 1, block_image);
     }
 } 
 
@@ -1059,20 +1060,23 @@ void setup_main(){
 }
 
 void setup_game(){
-    LivesRemaining = 10;
+    LivesRemaining = 2; //TODO set to 10
     Score = 0;
     time_overflow_counter = 0;
     memset(Platforms, 0, sizeOfPlatforms*sizeof(Platforms[0]));
     create_platforms();
     draw_platforms();
-    sprite_init( &player, playerSpawnX, 0, 5, 4, load_rom_bitmap(player_image, 4));
+    sprite_init( &player, playerSpawnX, 0, 5, 4, player_image);
     sprite_draw( &player);
-    sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, load_rom_bitmap(chest_image, 3));
+    sprite_init( &treasure, LCD_X / 2, LCD_Y - 5, 5, 3, chest_image);
     init_food();
     init_zombies();
     treasure.dx = 0.2 * GS;
     sprite_draw( &treasure);
     serial_comms(1, NULL);
+    time_overflow_counter = 0;
+    playerMovingLeft = false;
+    playerMovingRight = false;
 }
 
 // draw sprites in order of overlap - sprites draw last on top.
@@ -1168,13 +1172,14 @@ int main ( void ){
     }
 
     //TODO
-    setup_game(); // move inside game loop
+     // move inside game loop
 
     while(!gameExit)
     {   
-        
+        setup_game();
         while(!gameOver)
         {   
+            
             while(!gamePause)
             {
                 clear_screen();
