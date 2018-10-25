@@ -206,7 +206,7 @@ void serial_comms ( uint8_t event, char* death_type ){
     uint8_t seconds = secondsPast % 60;
 
     if (event == 1){ // Game Start
-        sprintf(output, (char*)load_rom_string(serialText_GameStart), player.x, player.y);
+        sprintf(output, (char*)load_rom_string(serialText_GameStart), (double)player.x, (double)player.y);
     }
     else if (event == 2){ // Player Death
         //sprintf(output, (char*)load_rom_string(serialText_Death), 
@@ -215,7 +215,7 @@ void serial_comms ( uint8_t event, char* death_type ){
     }
     else if (event == 3){ //Player Respawn
         //sprintf(output, (char*)load_rom_string(serialText_Respawn), player.x, player.y);
-        sprintf(output, serialText_Respawn, player.x, player.y);
+        sprintf(output, serialText_Respawn, (double)player.x, (double)player.y);
     }
     else if (event == 4){ // Zombies Appear
         sprintf(output, (char*)load_rom_string(serialText_ZombiesAppear), 5, minutes, seconds, LivesRemaining, Score );
@@ -224,7 +224,7 @@ void serial_comms ( uint8_t event, char* death_type ){
         sprintf(output, (char*)load_rom_string(serialText_ZombieFood), count_zombies(), food_in_inventory, minutes, seconds);
     }
     else if (event == 6){ //Chest Collide
-        sprintf(output, (char*)load_rom_string(serialText_ChestCollide), Score, LivesRemaining, minutes, seconds, player.x, player.y);
+        sprintf(output, (char*)load_rom_string(serialText_ChestCollide), Score, LivesRemaining, minutes, seconds, (double)player.x, (double)player.y);
     }
     else if (event == 7){ // Pause Button
         sprintf(output, (char*)load_rom_string(serialText_Pause), LivesRemaining, Score, minutes, seconds, 5, food_in_inventory);

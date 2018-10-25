@@ -1791,3 +1791,28 @@ Game Over - Lives: 0, Score: 16, time: 0:24, Zombies_Fed: 0
 Game Start - player positon: 4 , 0 
 Game Start - player positon: 4 , 0 
 Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 1, score: 1
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 1, time: 0:1 
+Respawn - player position: 4, 0
+Zombies Appeared - num_Zombies: 5, time: 0:3, lives: 9, score: 1
+Death - reason: player_off_screen, lives: 8, score: 1, time: 0:5 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 7, score: 1, time: 0:8 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 6, score: 1, time: 0:12 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 5, score: 1, time: 0:16 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 4, score: 1, time: 0:20 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 3, score: 1, time: 0:23 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 2, score: 1, time: 0:25 
+Respawn - player position: 4, 0
+Death - reason: player_off_screen, lives: 1, score: 1, time: 0:29 
+Respawn - player position: 4, 0
+Game Over - Lives: 0, Score: 1, time: 0:36, Zombies_Fed: 0
+Game Start - player positon: 4 , 0 
+Game Start - player positon: 4 , 0 
+Death - reason: player_off_screen, lives: 9, score: 0, time: 0:2 
+Respawn - player position: 4, 0
